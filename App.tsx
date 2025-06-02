@@ -365,6 +365,7 @@ const Navbar: React.FC = () => {
              )}
           </div>
         </div>
+      </div> {/* This closes the container div */}
 
         {/* Mobile menu, show/hide based on menu state. */}
         {mobileMenuOpen && (
