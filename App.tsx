@@ -16,7 +16,8 @@ interface AuthContextType {
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
   loading: boolean;
-  isAdmin: boolean;
+  isAdmin: boolean; // True if ADMIN or SITE_MANAGER
+  isSiteManager: boolean; // True only if SITE_MANAGER
   isSubscribed: boolean;
   refreshUser: () => void;
 }
@@ -102,8 +103,9 @@ const App: React.FC = () => {
     return translations[key] as string || key;
   };
   
-  const isAdmin = currentUser?.role === UserRole.ADMIN;
-  const isSubscribed = currentUser?.role !== UserRole.ADMIN && currentUser?.subscriptionStatus === 'active' && !!currentUser.subscriptionExpiry && new Date(currentUser.subscriptionExpiry) > new Date();
+  const isAdmin = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SITE_MANAGER;
+  const isSiteManager = currentUser?.role === UserRole.SITE_MANAGER;
+  const isSubscribed = currentUser?.role !== UserRole.ADMIN && currentUser?.role !== UserRole.SITE_MANAGER && currentUser?.subscriptionStatus === 'active' && !!currentUser.subscriptionExpiry && new Date(currentUser.subscriptionExpiry) > new Date();
 
 
   if (loading) {
@@ -111,7 +113,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser, logout, loading, isAdmin, isSubscribed, refreshUser }}>
+    <AuthContext.Provider value={{ currentUser, setCurrentUser, logout, loading, isAdmin, isSiteManager, isSubscribed, refreshUser }}>
       <LocalizationContext.Provider value={{ language, setLanguage, translations, t }}>
         <HashRouter>
           <div className="min-h-screen flex flex-col">
@@ -170,7 +172,7 @@ const Navbar: React.FC = () => {
                 <NavLink to="/user/dashboard" className={navLinkClasses}>{t('dashboard')}</NavLink>
                 {(isSubscribed || isAdmin) && <NavLink to="/content/workouts" className={navLinkClasses}>{t('workouts')}</NavLink>}
                 {(isSubscribed || isAdmin) && <NavLink to="/content/nutrition" className={navLinkClasses}>{t('nutrition')}</NavLink>}
-                {!isAdmin && <NavLink to="/user/subscriptions" className={navLinkClasses}>{t('subscriptions')}</NavLink>}
+                {(!isAdmin || currentUser.role === UserRole.USER) && <NavLink to="/user/subscriptions" className={navLinkClasses}>{t('subscriptions')}</NavLink>}
                 {isAdmin && <NavLink to="/admin" className={navLinkClasses}>{t('adminPanel')}</NavLink>}
                 <NavLink to="/user/profile" className={navLinkClasses}>{t('profile')}</NavLink>
                 <button onClick={handleLogout} className={navLinkClasses({isActive:false})}>
@@ -205,7 +207,11 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      navigate('/user/dashboard');
+      if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SITE_MANAGER) {
+        navigate('/admin');
+      } else {
+        navigate('/user/dashboard');
+      }
     } else {
       navigate('/auth'); // Redirect to auth page if not logged in
     }

@@ -2,6 +2,7 @@
 export enum UserRole {
   USER = 'USER',
   ADMIN = 'ADMIN',
+  SITE_MANAGER = 'SITE_MANAGER',
 }
 
 export interface User {
@@ -9,6 +10,7 @@ export interface User {
   email: string;
   password?: string; // Only present during registration, not stored as plain text
   name: string;
+  phoneNumber?: string; // Added phone number
   role: UserRole;
   profileImage?: string;
   stats?: UserStats;
@@ -113,3 +115,16 @@ export interface AIAssistantMessage {
 export interface Translations {
   [key: string]: string | Translations;
 }
+
+// PDF Library Types
+export interface PdfDocument {
+  id: string;
+  fileName: string;
+  fileData: string; // Base64 encoded string of the PDF file
+  description: string;
+  uploadedBy: string; // Admin user ID
+  uploadDate: string; // ISO Date string
+  assignedUserIds: string[]; // Array of user IDs this PDF is assigned to
+}
+
+// Macronutrient Calculator Types REMOVED

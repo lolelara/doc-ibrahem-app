@@ -1,11 +1,12 @@
 
+
 import React, { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
 import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useLocalization } from '../App';
 import { ProtectedRoute, Button, Input, Card, Spinner, Textarea, Modal } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
 import { getNutritionAdvice } from '../services/geminiService';
-import { WorkoutVideo, Recipe, CalorieIntakeItem, AIAssistantMessage } from '../types';
+import { WorkoutVideo, Recipe, CalorieIntakeItem, AIAssistantMessage } from '../types'; // Removed Macro types
 import { THEME_COLORS } from '../constants';
 
 const ContentPages: React.FC = () => {
@@ -129,7 +130,7 @@ const VideoDetailPage: React.FC = () => {
             <Card className="p-6">
                 <p className="text-gray-300 mb-2"><strong className="font-semibold">{t('category', 'الفئة')}:</strong> {t(video.category.toLowerCase(), video.category)}</p>
                 <p className="text-gray-300 mb-4"><strong className="font-semibold">{t('duration', 'المدة')}:</strong> {video.durationMinutes} {t('minutes', 'دقائق')}</p>
-                <h2 className="text-xl font-semibold text-white mb-2">{t('description', 'الوصف')}:</h2>
+                <h2 className="text-xl font-semibold text-white mb-2">{t('videoDisplayDescriptionLabel', 'الوصف')}:</h2>
                 <p className="text-gray-300 whitespace-pre-line">{video.description}</p>
             </Card>
         </div>
@@ -163,7 +164,6 @@ const NutritionPage: React.FC = () => {
     <div className="space-y-12">
       <h1 className="text-4xl font-bold text-white text-center mb-12">{t('nutrition')}</h1>
       
-      {/* Recipes Section */}
       <section>
         <h2 className="text-3xl font-semibold text-emerald-400 mb-6">{t('recipes')}</h2>
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -194,13 +194,13 @@ const NutritionPage: React.FC = () => {
         )}
       </section>
 
-      {/* Calorie Calculator Section */}
+      {/* Macronutrient Calculator Section REMOVED */}
+
       <section>
         <h2 className="text-3xl font-semibold text-sky-400 mb-6">{t('calorieCalculator')}</h2>
-        <CalorieCalculator />
+        <CalorieTracker /> {/* Renamed from CalorieCalculator to CalorieTracker for clarity */}
       </section>
 
-      {/* Nutrition AI Assistant Section */}
       <section>
         <h2 className="text-3xl font-semibold text-amber-400 mb-6">{t('nutritionAIAssistant')}</h2>
         <NutritionAIAssistant />
@@ -271,8 +271,8 @@ const RecipeDetail: React.FC<{recipe: Recipe}> = ({recipe}) => {
 };
 
 
-// Calorie Calculator (Local Component)
-const CalorieCalculator: React.FC = () => {
+// Calorie Tracker (previously CalorieCalculator)
+const CalorieTracker: React.FC = () => {
   const { t } = useLocalization();
   const [items, setItems] = useState<CalorieIntakeItem[]>([]);
   const [foodItem, setFoodItem] = useState('');
@@ -342,6 +342,8 @@ const CalorieCalculator: React.FC = () => {
   );
 };
 
+// Macronutrient Calculator REMOVED
+
 // Nutrition AI Assistant (Local Component)
 const NutritionAIAssistant: React.FC = () => {
   const { t } = useLocalization();
@@ -366,7 +368,7 @@ const NutritionAIAssistant: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const aiResponse = await getNutritionAdvice(input, messages); // Pass history
+      const aiResponse = await getNutritionAdvice(input, messages); 
       const assistantMessage: AIAssistantMessage = { id: `msg_${Date.now()}_assistant`, role: 'assistant', content: aiResponse, timestamp: new Date().toISOString() };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
@@ -386,7 +388,7 @@ const NutritionAIAssistant: React.FC = () => {
             <div className={`max-w-[70%] p-3 rounded-lg shadow ${
               msg.role === 'user' ? `bg-${THEME_COLORS.primary} text-white` : 
               msg.role === 'assistant' ? 'bg-gray-700 text-gray-200' : 
-              'bg-red-700 text-red-200' // System/Error messages
+              'bg-red-700 text-red-200' 
             }`}>
               <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
               <p className="text-xs opacity-70 mt-1 text-right">{new Date(msg.timestamp).toLocaleTimeString('ar-EG', {hour: '2-digit', minute: '2-digit'})}</p>
@@ -421,7 +423,6 @@ const NutritionAIAssistant: React.FC = () => {
 };
 
 
-// Utility: LoadingOverlay (if not already in CommonUI, define here or import)
 const LoadingOverlay: React.FC<{ message?: string }> = ({ message }) => {
   const { t } = useLocalization();
   return (

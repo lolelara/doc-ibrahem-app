@@ -1,7 +1,7 @@
 
 import { UserRole, DefaultSubscriptionPlanId, SubscriptionPlan, Translations, WorkoutVideo, Recipe, SubscriptionPlanFeature } from './types';
 
-export const APP_NAME = "Doc Ibrahem";
+export const APP_NAME = "My Fit Coach";
 export const ADMIN_EMAIL = "lolelarap@gmail.com"; // Hardcoded admin email updated
 
 export const THEME_COLORS = {
@@ -19,13 +19,14 @@ export const THEME_COLORS = {
 };
 
 export const AR_TRANSLATIONS: Translations = {
-  appName: "دوك إبراهيم",
+  appName: "My Fit Coach",
   tagline: "مدربك الشخصي نحو صحة أفضل",
   login: "تسجيل الدخول",
   register: "إنشاء حساب جديد",
   email: "البريد الإلكتروني",
   password: "كلمة المرور",
   name: "الاسم الكامل",
+  phoneNumber: "رقم الهاتف",
   confirmPassword: "تأكيد كلمة المرور",
   dashboard: "لوحة التحكم",
   profile: "الملف الشخصي",
@@ -40,7 +41,7 @@ export const AR_TRANSLATIONS: Translations = {
   browsePlans: "تصفح خطط الاشتراك",
   workoutVideos: "مكتبة تمارين الفيديو",
   recipes: "وصفات صحية",
-  calorieCalculator: "حاسبة السعرات الحرارية",
+  calorieCalculator: "حاسبة السعرات الحرارية اليومية", // Updated for clarity
   nutritionAIAssistant: "مساعد التغذية الذكي",
   askNutritionQuestion: "اطرح سؤالاً عن التغذية...",
   submit: "إرسال",
@@ -68,6 +69,7 @@ export const AR_TRANSLATIONS: Translations = {
   plan: "الخطة",
   status: "الحالة",
   action: "الإجراء",
+  actions: "إجراءات",
   addVideo: "إضافة فيديو جديد",
   videoTitle: "عنوان الفيديو",
   videoDescription: "وصف الفيديو",
@@ -137,9 +139,7 @@ export const AR_TRANSLATIONS: Translations = {
   featureText: "نص الميزة",
   pricePlaceholder: "مثال: 29.99",
   currencyPlaceholder: "مثال: USD أو SAR",
-  defaultDurationDays: "المدة الافتراضية (أيام)", // Label for input field, not placeholder
-
-  // Newly added/updated translations
+  defaultDurationDays: "المدة الافتراضية (أيام)", 
   pageNotFound: 'الصفحة غير موجودة',
   pageNotFoundText: 'عذرًا، الصفحة التي تبحث عنها غير موجودة.',
   goHome: 'العودة إلى الصفحة الرئيسية',
@@ -152,7 +152,7 @@ export const AR_TRANSLATIONS: Translations = {
   loadingVideo: 'جاري تحميل الفيديو...',
   videoNotFound: 'الفيديو غير موجود.',
   category: 'الفئة',
-  description: 'الوصف', // Generic description if needed
+  videoDisplayDescriptionLabel: 'الوصف', // Changed from 'description' to be more specific
   searchRecipes: 'ابحث عن الوصفات...',
   noRecipesFound: 'لم يتم العثور على وصفات تطابق بحثك.',
   perServing: 'لكل حصة',
@@ -177,6 +177,7 @@ export const AR_TRANSLATIONS: Translations = {
   noPlansAvailable: 'لا توجد خطط اشتراك متاحة حاليًا.',
   adminNavigation: 'التنقل الإداري',
   role: 'الدور',
+  siteManager: "مدير الموقع",
   subscriptionStatus: 'حالة الاشتراك',
   notSubscribedYet: 'لم يشترك بعد',
   planNotFoundOrDeleted: 'الخطة محذوفة أو غير موجودة',
@@ -188,7 +189,40 @@ export const AR_TRANSLATIONS: Translations = {
   rejectedByAdmin: 'تم الرفض بواسطة الإدارة',
   requested: 'مطلوب',
   daysDurationHelp: 'أدخل عدد أيام صلاحية الاشتراك بالرقم.',
-  durationDaysPlaceholder: 'مثال: 30', // Placeholder for input field
+  durationDaysPlaceholder: 'مثال: 30',
+
+  // Admin Promotion
+  promoteToAdmin: "ترقية إلى مسؤول",
+  demoteToUser: "تخفيض إلى مستخدم",
+  confirmPromotion: "هل أنت متأكد أنك تريد ترقية هذا المستخدم إلى مسؤول؟",
+  confirmDemotion: "هل أنت متأكد أنك تريد تخفيض هذا المسؤول إلى مستخدم؟",
+  cannotDemoteSelf: "لا يمكنك تخفيض دورك كمدير للموقع.",
+  roleUpdatedSuccess: "تم تحديث دور المستخدم بنجاح.",
+  cannotModifySiteManager: "لا يمكن تعديل دور مدير الموقع الأساسي.",
+  actionNotAllowed: "الإجراء غير مسموح به.",
+
+
+  // PDF Library
+  managePdfs: "إدارة ملفات PDF",
+  pdfLibrary: "مكتبة PDF",
+  uploadPdf: "رفع ملف PDF",
+  myDocuments: "مستنداتي",
+  downloadPdf: "تحميل PDF",
+  assignToUsers: "تعيين لمستخدمين",
+  pdfFileName: "اسم الملف",
+  pdfDescription: "وصف الملف",
+  selectPdfFile: "اختر ملف PDF",
+  noPdfsAssigned: "لا توجد ملفات PDF مخصصة لك حاليًا.",
+  noPdfsUploaded: "لم يتم رفع أي ملفات PDF بعد.",
+  confirmDeletePdf: "هل أنت متأكد أنك تريد حذف ملف PDF هذا؟",
+  editPdfAssignments: "تعديل تعيينات PDF",
+  pdfUploadedSuccess: "تم رفع ملف PDF بنجاح.",
+  pdfDeletedSuccess: "تم حذف ملف PDF بنجاح.",
+  pdfUpdatedSuccess: "تم تحديث ملف PDF بنجاح.",
+  selectUsersToAssign: "اختر المستخدمين لتعيين الملف لهم:",
+  assignedUsers: "المستخدمون المعين لهم:",
+
+  // Macronutrient Calculator translations REMOVED
 };
 
 export const INITIAL_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
@@ -315,3 +349,4 @@ export const INITIAL_RECIPES: Recipe[] = [
 
 export const GEMINI_MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
 export const GEMINI_NUTRITION_SYSTEM_INSTRUCTION = "أنت مساعد تغذية خبير. قدم نصائح وإجابات واضحة ومفيدة حول التغذية والوصفات الصحية. تحدث باللغة العربية. اجعل إجاباتك موجزة ومباشرة ما لم يُطلب منك التفصيل.";
+export const PDF_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for PDFs in localStorage

@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, useLocalization } from '../App';
 import { ProtectedRoute, Button, Input, Card, Spinner, Textarea } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
-import { UserStats, SubscriptionPlan, SubscriptionStatus, SubscriptionPlanFeature } from '../types';
-import { THEME_COLORS } from '../constants';
+import { UserStats, SubscriptionPlan, SubscriptionStatus, PdfDocument, SubscriptionPlanFeature, UserRole } from '../types';
+import { THEME_COLORS, ADMIN_EMAIL } from '../constants';
 
 const UserPages: React.FC = () => {
   return (
@@ -24,6 +25,7 @@ const DashboardPage: React.FC = () => {
   const location = useLocation();
   const [message, setMessage] = useState(location.state?.message);
   const [currentPlanDetails, setCurrentPlanDetails] = useState<SubscriptionPlan | null>(null);
+  const [assignedPdfs, setAssignedPdfs] = useState<PdfDocument[]>([]);
 
   useEffect(() => {
     refreshUser(); 
@@ -33,14 +35,25 @@ const DashboardPage: React.FC = () => {
   }, [location.state, navigate, refreshUser]);
   
   useEffect(() => {
-    if (currentUser?.activeSubscriptionPlanId && currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE) {
-        const plan = DataService.getSubscriptionPlans().find(p => p.id === currentUser.activeSubscriptionPlanId);
-        setCurrentPlanDetails(plan || null);
-    } else {
-        setCurrentPlanDetails(null);
+    if (currentUser) {
+        if (currentUser.activeSubscriptionPlanId && currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE) {
+            const plan = DataService.getSubscriptionPlans().find(p => p.id === currentUser.activeSubscriptionPlanId);
+            setCurrentPlanDetails(plan || null);
+        } else {
+            setCurrentPlanDetails(null);
+        }
+        setAssignedPdfs(DataService.getPdfsForUser(currentUser.id));
     }
   }, [currentUser]);
 
+  const handleDownloadPdf = (pdf: PdfDocument) => {
+    const link = document.createElement('a');
+    link.href = pdf.fileData; // Base64 data URL
+    link.download = pdf.fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (!currentUser) return <Spinner />;
 
@@ -49,31 +62,59 @@ const DashboardPage: React.FC = () => {
       {message && <div className={`p-4 mb-4 text-sm rounded-lg bg-opacity-20 ${message.includes('محظور') || message.includes('denied') ? `bg-red-500 text-red-300` : `bg-yellow-500 text-yellow-300`}`}>{message}</div>}
       <h1 className="text-3xl font-bold text-white">{t('dashboard')}</h1>
       
-      <Card className="p-6">
-        <h2 className="text-2xl font-semibold text-emerald-400 mb-4">{t('myStats')}</h2>
-        <StatsTracker />
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="p-6">
+          <h2 className="text-2xl font-semibold text-emerald-400 mb-4">{t('myStats')}</h2>
+          <StatsTracker />
+        </Card>
 
-      <Card className="p-6">
-        <h2 className="text-2xl font-semibold text-sky-400 mb-4">{t('currentPlan')}</h2>
-        {currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE && currentPlanDetails && currentUser.subscriptionExpiry ? (
-          <div>
-            <p className="text-lg"><strong className="font-semibold">{currentPlanDetails.name}</strong></p>
-            <p className="text-gray-300">{currentPlanDetails.description}</p>
-            <ul className="list-disc list-inside mt-2 text-gray-300">
-                {currentPlanDetails.features.map(feature => <li key={feature.id}>{feature.text}</li>)}
-            </ul>
-            <p className="text-gray-300 mt-2">{t('expiresOn')}: {new Date(currentUser.subscriptionExpiry).toLocaleDateString('ar-EG')}</p>
-          </div>
-        ) : currentUser.subscriptionStatus === SubscriptionStatus.PENDING ? (
-          <p className="text-yellow-400">{t('pendingApproval')} - {DataService.getSubscriptionRequests().find(r => r.userId === currentUser.id && r.status === SubscriptionStatus.PENDING)?.planNameSnapshot}</p>
-        ) : (
-          <div className="text-center">
-            <p className="text-gray-400 mb-4">{t('noActivePlan')}</p>
-            <Button onClick={() => navigate('/user/subscriptions')} variant="secondary">{t('browsePlans')}</Button>
-          </div>
-        )}
-      </Card>
+        <div className="space-y-8">
+            <Card className="p-6">
+                <h2 className="text-2xl font-semibold text-sky-400 mb-4">{t('currentPlan')}</h2>
+                {currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE && currentPlanDetails && currentUser.subscriptionExpiry ? (
+                <div>
+                    <p className="text-lg"><strong className="font-semibold">{currentPlanDetails.name}</strong></p>
+                    <p className="text-gray-300">{currentPlanDetails.description}</p>
+                    <ul className="list-disc list-inside mt-2 text-gray-300">
+                        {currentPlanDetails.features.map(feature => <li key={feature.id}>{feature.text}</li>)}
+                    </ul>
+                    <p className="text-gray-300 mt-2">{t('expiresOn')}: {new Date(currentUser.subscriptionExpiry).toLocaleDateString('ar-EG')}</p>
+                </div>
+                ) : currentUser.subscriptionStatus === SubscriptionStatus.PENDING ? (
+                <p className="text-yellow-400">{t('pendingApproval')} - {DataService.getSubscriptionRequests().find(r => r.userId === currentUser.id && r.status === SubscriptionStatus.PENDING)?.planNameSnapshot}</p>
+                ) : (
+                <div className="text-center">
+                    <p className="text-gray-400 mb-4">{t('noActivePlan')}</p>
+                    <Button onClick={() => navigate('/user/subscriptions')} variant="secondary">{t('browsePlans')}</Button>
+                </div>
+                )}
+            </Card>
+            
+            <Card className="p-6">
+                <h2 className="text-2xl font-semibold text-amber-400 mb-4">{t('myDocuments')}</h2>
+                {assignedPdfs.length > 0 ? (
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {assignedPdfs.map(pdf => (
+                        <div key={pdf.id} className="p-3 bg-gray-700 rounded-md flex justify-between items-center">
+                        <div>
+                            <h4 className="font-semibold text-white">{pdf.fileName}</h4>
+                            <p className="text-xs text-gray-400">{pdf.description}</p>
+                        </div>
+                        <Button onClick={() => handleDownloadPdf(pdf)} size="sm" variant="ghost">
+                            {t('downloadPdf')}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ms-2">
+                            <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v9.546l2.47-2.47a.75.75 0 111.06 1.06l-3.75 3.75a.75.75 0 01-1.06 0L5.22 11.886a.75.75 0 111.06-1.06l2.47 2.47V3.75A.75.75 0 0110 3zM3.75 14A1.75 1.75 0 012 15.75v.5A1.75 1.75 0 003.75 18h12.5A1.75 1.75 0 0018 16.25v-.5A1.75 1.75 0 0116.25 14h-3.563a.75.75 0 110-1.5h3.563A3.25 3.25 0 0020 15.75v.5A3.25 3.25 0 0116.25 19.5H3.75A3.25 3.25 0 010 16.25v-.5A3.25 3.25 0 003.75 12.5h3.563a.75.75 0 010 1.5H3.75z" clipRule="evenodd" />
+                            </svg>
+                        </Button>
+                        </div>
+                    ))}
+                    </div>
+                ) : (
+                    <p className="text-gray-400">{t('noPdfsAssigned')}</p>
+                )}
+            </Card>
+        </div>
+      </div>
     </div>
   );
 };
@@ -111,7 +152,7 @@ const StatsTracker: React.FC = () => {
     setIsLoading(true);
     const updatedUser = await DataService.updateUserStats(currentUser.id, stats);
     if (updatedUser) {
-      setCurrentUser(updatedUser); // This should trigger refresh in AuthContext
+      setCurrentUser(updatedUser); 
       setIsEditing(false);
     }
     setIsLoading(false);
@@ -172,7 +213,7 @@ const ProfilePage: React.FC = () => {
   const { t } = useLocalization();
   const [name, setName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
-  // Password change functionality can be added here
+  const [phoneNumber, setPhoneNumber] = useState(currentUser?.phoneNumber || '');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -182,7 +223,15 @@ const ProfilePage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setMessage('');
-    const updatedUser = DataService.updateUser({ ...currentUser, name, email });
+    
+    const updatedUserDetails = { 
+        ...currentUser, 
+        name, 
+        email, 
+        phoneNumber 
+    };
+    // Pass undefined for currentAdminId as this is a self-update, not a role change by admin
+    const updatedUser = DataService.updateUser(updatedUserDetails, undefined); 
     if (updatedUser) {
       setCurrentUser(updatedUser);
       setMessage(t('profileUpdatedSuccess', 'تم تحديث الملف الشخصي بنجاح!'));
@@ -190,6 +239,7 @@ const ProfilePage: React.FC = () => {
       setMessage(t('errorOccurred'));
     }
     setIsLoading(false);
+     setTimeout(() => setMessage(''), 3000);
   };
 
   return (
@@ -198,8 +248,10 @@ const ProfilePage: React.FC = () => {
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <Input label={t('name')} id="name" type="text" value={name} onChange={e => setName(e.target.value)} required />
-          <Input label={t('email')} id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-          {/* Add password change fields here if needed */}
+          <Input label={t('email')} id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required 
+                 disabled={currentUser.email === ADMIN_EMAIL} // Site Manager cannot change their email
+          />
+          <Input label={t('phoneNumber') + ` (${t('optional')})`} id="phoneNumber" type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
           {message && <p className={`text-sm ${message.includes('نجاح') ? 'text-green-400' : 'text-red-400'}`}>{message}</p>}
           <Button type="submit" isLoading={isLoading}>{t('saveChanges')}</Button>
         </form>
@@ -214,7 +266,7 @@ const SubscriptionPlansPage: React.FC = () => {
   const { t } = useLocalization();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState<string | null>(null); // plan.id is string
+  const [isLoading, setIsLoading] = useState<string | null>(null); 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [pageMessage, setPageMessage] = useState(location.state?.message);
@@ -236,12 +288,13 @@ const SubscriptionPlansPage: React.FC = () => {
     try {
       DataService.requestSubscription(currentUser.id, currentUser.email, planId);
       const updatedUser = DataService.getUserById(currentUser.id); 
-      if(updatedUser) setCurrentUser(updatedUser); // This triggers AuthContext update
+      if(updatedUser) setCurrentUser(updatedUser); 
       setSuccess(t('subscriptionRequestedSuccess', 'تم إرسال طلب اشتراكك بنجاح. ستتم مراجعته قريبًا.'));
     } catch (err: any) {
       setError(err.message || t('errorOccurred'));
     }
     setIsLoading(null);
+    setTimeout(() => {setError(''); setSuccess('');}, 4000);
   };
 
 

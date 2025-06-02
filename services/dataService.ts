@@ -1,11 +1,13 @@
-import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, DefaultSubscriptionPlanId, SubscriptionPlanFeature } from '../types';
-import { ADMIN_EMAIL, INITIAL_WORKOUT_VIDEOS, INITIAL_RECIPES, INITIAL_SUBSCRIPTION_PLANS } from '../constants';
+
+import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature } from '../types';
+import { ADMIN_EMAIL, INITIAL_WORKOUT_VIDEOS, INITIAL_RECIPES, INITIAL_SUBSCRIPTION_PLANS, PDF_MAX_SIZE_BYTES } from '../constants';
 
 const LS_USERS = 'fitzone_users';
 const LS_WORKOUT_VIDEOS = 'fitzone_workout_videos';
 const LS_RECIPES = 'fitzone_recipes';
-const LS_SUBSCRIPTION_REQUESTS = 'fitzone_subscription_requests'; // Renamed for clarity
+const LS_SUBSCRIPTION_REQUESTS = 'fitzone_subscription_requests';
 const LS_SUBSCRIPTION_PLANS = 'fitzone_subscription_plans';
+const LS_PDF_DOCUMENTS = 'fitzone_pdf_documents';
 
 
 const getFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
@@ -23,49 +25,49 @@ const saveToLocalStorage = <T,>(key: string, value: T): void => {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
     console.error(`Error writing to localStorage key "${key}":`, error);
+     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        alert("LocalStorage is full. Cannot save more data. Please clear some space or contact support.");
+     }
   }
 };
 
 // Initialize with default admin and data if not present
 const initializeData = () => {
   let users = getFromLocalStorage<User[]>(LS_USERS, []);
-  const targetAdminEmail = ADMIN_EMAIL; // This will be the new admin email from constants.ts
+  const targetAdminEmail = ADMIN_EMAIL; 
 
   let foundTargetAdmin = false;
   users = users.map(user => {
+    const userWithPhone = { ...user, phoneNumber: user.phoneNumber || '' };
     if (user.email === targetAdminEmail) {
       foundTargetAdmin = true;
-      // Ensure this user is admin and has a name/password
       return {
-        ...user,
-        role: UserRole.ADMIN,
-        name: user.name || 'Admin', // Default name if none exists, or keeps existing
-        // Password will be their existing one, or 'adminpassword' via login backdoor if new
-        password: user.password || 'adminpassword', // Ensure admin has a default password if not set
+        ...userWithPhone,
+        role: UserRole.SITE_MANAGER, // Site Manager
+        name: user.name || 'Site Manager', 
+        password: user.password || 'adminpassword', 
       };
     }
-    // If this user was an admin but not the target one, demote them.
-    if (user.role === UserRole.ADMIN && user.email !== targetAdminEmail) {
-      return { ...user, role: UserRole.USER };
+    // Demote any other user who might have been SITE_MANAGER or ADMIN (if not ADMIN_EMAIL)
+    if (user.role === UserRole.SITE_MANAGER || (user.role === UserRole.ADMIN && user.email !== targetAdminEmail)) {
+      return { ...userWithPhone, role: UserRole.USER };
     }
-    return user;
+    return userWithPhone;
   });
 
   if (!foundTargetAdmin) {
-    // Target admin email was not found, create a new admin user.
     const newAdmin: User = {
-      id: `admin_user_${Date.now()}`,
+      id: `sitemanager_user_${Date.now()}`,
       email: targetAdminEmail,
-      password: 'adminpassword', // Default password for new admin
-      name: 'Admin', // Default name for a newly created admin
-      role: UserRole.ADMIN,
+      password: 'adminpassword', 
+      name: 'Site Manager',
+      phoneNumber: '', 
+      role: UserRole.SITE_MANAGER,
     };
     users.push(newAdmin);
   }
   saveToLocalStorage(LS_USERS, users);
 
-  // Initialize other data (videos, recipes, plans, requests)
-  // These use ADMIN_EMAIL for 'uploadedBy' in initial data, so they'll reflect the new admin.
   if (getFromLocalStorage<WorkoutVideo[]>(LS_WORKOUT_VIDEOS, []).length === 0) {
     saveToLocalStorage(LS_WORKOUT_VIDEOS, INITIAL_WORKOUT_VIDEOS);
   }
@@ -78,6 +80,9 @@ const initializeData = () => {
   if (getFromLocalStorage<SubscriptionPlan[]>(LS_SUBSCRIPTION_PLANS, []).length === 0) {
     saveToLocalStorage(LS_SUBSCRIPTION_PLANS, INITIAL_SUBSCRIPTION_PLANS);
   }
+  if (getFromLocalStorage<PdfDocument[]>(LS_PDF_DOCUMENTS, []).length === 0) {
+    saveToLocalStorage(LS_PDF_DOCUMENTS, []);
+  }
 };
 
 
@@ -87,51 +92,74 @@ initializeData();
 export const getUsers = (): User[] => getFromLocalStorage<User[]>(LS_USERS, []);
 export const getUserByEmail = (email: string): User | undefined => getUsers().find(u => u.email === email);
 export const getUserById = (id: string): User | undefined => getUsers().find(u => u.id === id);
-export const addUser = (user: User): User => {
+
+export const addUser = (user: Omit<User, 'id' | 'role'> & { role?: UserRole }): User => {
   const users = getUsers();
-  // Ensure new users are not accidentally admin unless explicitly set by admin functions
-  const role = user.email === ADMIN_EMAIL ? UserRole.ADMIN : UserRole.USER;
-  const newUser = { ...user, id: `user_${Date.now()}`, role: user.role || role };
+  let role = UserRole.USER;
+  if (user.email === ADMIN_EMAIL) {
+    role = UserRole.SITE_MANAGER;
+  } else if (user.role) { // Allow role to be passed for testing, but override for ADMIN_EMAIL
+    role = user.role;
+  }
+
+  const newUser: User = {
+    ...user,
+    id: `user_${Date.now()}`,
+    role: role,
+    phoneNumber: user.phoneNumber || '',
+  };
   
-  // Prevent adding another user with ADMIN_EMAIL if they are not the admin
-  if (user.email === ADMIN_EMAIL && newUser.role !== UserRole.ADMIN) {
-      console.warn(`Attempted to add user with ADMIN_EMAIL (${user.email}) but not as ADMIN. This is not allowed.`);
-      throw new Error("Cannot create non-admin user with the designated admin email.");
+  if (user.email === ADMIN_EMAIL && newUser.role !== UserRole.SITE_MANAGER) {
+      throw new Error("Cannot create non-SiteManager user with the designated Site Manager email.");
   }
     
   users.push(newUser);
   saveToLocalStorage(LS_USERS, users);
   return newUser;
 };
-export const updateUser = (updatedUser: User): User | undefined => {
+
+export const updateUser = (updatedUser: User, currentUserId?: string): User | undefined => {
   let users = getUsers();
   const index = users.findIndex(u => u.id === updatedUser.id);
-  if (index !== -1) {
-    // If trying to change email to ADMIN_EMAIL, ensure role is ADMIN
-    if (updatedUser.email === ADMIN_EMAIL && updatedUser.role !== UserRole.ADMIN) {
-        // This scenario should ideally be handled by making targetAdminEmail user admin in initializeData
-        // Or prevent changing a user's email to ADMIN_EMAIL if they are not becoming admin.
-        // For now, let's assume role is handled correctly by calling context or ensure it here.
-        console.warn(`Updating user ${updatedUser.id} to ADMIN_EMAIL but role is ${updatedUser.role}. Setting to ADMIN.`);
-        updatedUser.role = UserRole.ADMIN;
-    }
-    // If an admin is being demoted, or their email changed from ADMIN_EMAIL
-    if (users[index].email === ADMIN_EMAIL && users[index].role === UserRole.ADMIN && updatedUser.email !== ADMIN_EMAIL) {
-        console.warn(`Admin with email ${ADMIN_EMAIL} is having their email changed. This might affect admin access if not handled carefully.`);
-        // This case should be rare if initializeData is the main source of admin truth.
-    }
+  if (index === -1) return undefined;
 
-    users[index] = { ...users[index], ...updatedUser };
-    saveToLocalStorage(LS_USERS, users);
-    return users[index];
+  const originalUser = users[index];
+  const currentUserPerformingAction = currentUserId ? getUserById(currentUserId) : null;
+
+  // Role change logic
+  if (originalUser.role !== updatedUser.role) {
+    if (!currentUserPerformingAction || currentUserPerformingAction.role !== UserRole.SITE_MANAGER) {
+      throw new Error("Only the Site Manager can change user roles.");
+    }
+    if (originalUser.email === ADMIN_EMAIL && updatedUser.role !== UserRole.SITE_MANAGER) {
+      throw new Error("The Site Manager role cannot be changed or demoted by anyone, including themselves.");
+    }
+    if (updatedUser.role === UserRole.SITE_MANAGER && originalUser.email !== ADMIN_EMAIL) {
+      throw new Error("Only the designated email can be Site Manager.");
+    }
+    // Site Manager can promote USER to ADMIN or demote ADMIN to USER.
+    // Cannot promote to SITE_MANAGER (this is fixed to ADMIN_EMAIL).
+    if (updatedUser.role === UserRole.SITE_MANAGER) updatedUser.role = UserRole.ADMIN; // Prevent accidental promotion to Site Manager
+
+  } else if (originalUser.role === UserRole.ADMIN && updatedUser.role === UserRole.ADMIN && originalUser.id !== updatedUser.id) {
+    // This case implies an admin trying to edit another admin, which is fine for non-role properties.
+    // Role change for admins is handled above by SiteManager only.
+  } else if (originalUser.id === updatedUser.id && updatedUser.email === ADMIN_EMAIL && updatedUser.role !== UserRole.SITE_MANAGER) {
+    // If user is updating their own profile and they are the ADMIN_EMAIL, ensure their role remains SITE_MANAGER.
+     updatedUser.role = UserRole.SITE_MANAGER;
   }
-  return undefined;
+
+
+  users[index] = { ...users[index], ...updatedUser };
+  saveToLocalStorage(LS_USERS, users);
+  return users[index];
 };
+
 export const updateUserStats = (userId: string, stats: UserStats): User | undefined => {
   const user = getUserById(userId);
   if (user) {
     const updatedUser = { ...user, stats: { ...(user.stats || {}), ...stats } };
-    return updateUser(updatedUser);
+    return updateUser(updatedUser, undefined); // currentUserId is undefined as this is self-update, not role change
   }
   return undefined;
 };
@@ -145,7 +173,7 @@ export const addWorkoutVideo = (video: Omit<WorkoutVideo, 'id' | 'uploadDate' | 
     ...video, 
     id: `vid_${Date.now()}`, 
     uploadDate: new Date().toISOString(),
-    uploadedBy: adminId // Should be the current admin's ID or email
+    uploadedBy: adminId 
   };
   videos.push(newVideo);
   saveToLocalStorage(LS_WORKOUT_VIDEOS, videos);
@@ -180,7 +208,7 @@ export const addRecipe = (recipe: Omit<Recipe, 'id' | 'uploadDate' | 'uploadedBy
     ...recipe, 
     id: `rec_${Date.now()}`, 
     uploadDate: new Date().toISOString(),
-    uploadedBy: adminId // Should be the current admin's ID or email
+    uploadedBy: adminId 
   };
   recipes.push(newRecipe);
   saveToLocalStorage(LS_RECIPES, recipes);
@@ -207,9 +235,8 @@ export const deleteRecipe = (recipeId: string): boolean => {
   return false;
 };
 
-// Subscription Plans (Admin Editable)
+// Subscription Plans
 export const getSubscriptionPlans = (): SubscriptionPlan[] => getFromLocalStorage<SubscriptionPlan[]>(LS_SUBSCRIPTION_PLANS, INITIAL_SUBSCRIPTION_PLANS);
-
 export const addSubscriptionPlan = (plan: Omit<SubscriptionPlan, 'id'>): SubscriptionPlan => {
   const plans = getSubscriptionPlans();
   const newPlan: SubscriptionPlan = {
@@ -221,14 +248,12 @@ export const addSubscriptionPlan = (plan: Omit<SubscriptionPlan, 'id'>): Subscri
   saveToLocalStorage(LS_SUBSCRIPTION_PLANS, plans);
   return newPlan;
 };
-
 export const updateSubscriptionPlan = (updatedPlan: SubscriptionPlan): SubscriptionPlan | undefined => {
   let plans = getSubscriptionPlans();
   const index = plans.findIndex(p => p.id === updatedPlan.id);
   if (index !== -1) {
-    // Ensure feature IDs are preserved or regenerated if necessary
     updatedPlan.features = updatedPlan.features.map((f, idx) => ({
-        id: f.id || `feat_${updatedPlan.id}_${idx}_${Date.now()}`, // Assign new ID if missing
+        id: f.id || `feat_${updatedPlan.id}_${idx}_${Date.now()}`, 
         text: f.text
     }));
     plans[index] = updatedPlan;
@@ -237,43 +262,36 @@ export const updateSubscriptionPlan = (updatedPlan: SubscriptionPlan): Subscript
   }
   return undefined;
 };
-
 export const deleteSubscriptionPlan = (planId: string): boolean => {
   let plans = getSubscriptionPlans();
   const initialLength = plans.length;
   plans = plans.filter(p => p.id !== planId);
   if (plans.length < initialLength) {
     saveToLocalStorage(LS_SUBSCRIPTION_PLANS, plans);
-    // Side effect: update users who might have this plan active
     let users = getUsers();
     users.forEach(user => {
         if (user.activeSubscriptionPlanId === planId) {
             updateUser({ ...user, activeSubscriptionPlanId: undefined, subscriptionStatus: SubscriptionStatus.CANCELLED, subscriptionExpiry: undefined, subscriptionId: undefined, subscriptionNotes: "The subscription plan was deleted by admin." });
         }
     });
-    saveToLocalStorage(LS_USERS, users); // Save updated users
+    saveToLocalStorage(LS_USERS, users);
     
-    // Side effect: update subscription requests linked to this plan
     let requests = getSubscriptionRequests();
     requests.forEach(req => {
         if (req.planId === planId && req.status === SubscriptionStatus.PENDING) {
-            // Optionally, auto-reject or mark as invalid. For now, mark as rejected.
             req.status = SubscriptionStatus.REJECTED;
             req.adminNotes = "The requested plan was deleted by admin.";
             req.processedDate = new Date().toISOString();
-            // req.processedBy could be 'system' or the current admin if available contextually
         }
     });
-    saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests); // Save updated requests
+    saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests);
     return true;
   }
   return false;
 };
 
-
 // Subscription Requests
 export const getSubscriptionRequests = (): SubscriptionRequest[] => getFromLocalStorage<SubscriptionRequest[]>(LS_SUBSCRIPTION_REQUESTS, []);
-
 export const requestSubscription = (userId: string, userEmail: string, planId: string): SubscriptionRequest => {
   const requests = getSubscriptionRequests();
   const existingPendingRequest = requests.find(r => r.userId === userId && r.status === SubscriptionStatus.PENDING);
@@ -291,7 +309,7 @@ export const requestSubscription = (userId: string, userEmail: string, planId: s
     userId,
     userEmail,
     planId,
-    planNameSnapshot: plan.name, // Store plan name at time of request
+    planNameSnapshot: plan.name,
     requestDate: new Date().toISOString(),
     status: SubscriptionStatus.PENDING,
   };
@@ -302,10 +320,8 @@ export const requestSubscription = (userId: string, userEmail: string, planId: s
   if (user) {
     updateUser({ ...user, subscriptionStatus: SubscriptionStatus.PENDING, activeSubscriptionPlanId: planId, subscriptionNotes: 'Subscription requested, pending approval.' });
   }
-
   return newRequest;
 };
-
 export const approveSubscription = (requestId: string, adminId: string, durationDays: number): SubscriptionRequest | undefined => {
   const requests = getSubscriptionRequests();
   const requestIndex = requests.findIndex(r => r.id === requestId);
@@ -338,7 +354,6 @@ export const approveSubscription = (requestId: string, adminId: string, duration
   }
   return undefined;
 };
-
 export const rejectSubscription = (requestId: string, adminId: string, adminNotes?: string): SubscriptionRequest | undefined => {
   const requests = getSubscriptionRequests();
   const requestIndex = requests.findIndex(r => r.id === requestId);
@@ -351,30 +366,96 @@ export const rejectSubscription = (requestId: string, adminId: string, adminNote
     saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests);
 
     const user = getUserById(requests[requestIndex].userId);
-    if (user) { // Clear related fields on user
+    if (user) { 
         updateUser({ ...user, subscriptionStatus: SubscriptionStatus.REJECTED, subscriptionId: undefined, activeSubscriptionPlanId: undefined, subscriptionExpiry: undefined, subscriptionNotes: `Subscription rejected by ${adminId}. Notes: ${adminNotes}` });
     }
     return requests[requestIndex];
   }
   return undefined;
 };
-
 export const checkUserSubscriptionStatus = (userId: string): User | undefined => {
   const user = getUserById(userId);
   if (user && user.subscriptionId && user.subscriptionExpiry && user.subscriptionStatus === SubscriptionStatus.ACTIVE) {
     if (new Date(user.subscriptionExpiry) < new Date()) {
       return updateUser({ ...user, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription expired." });
     }
-    // Check if the active plan still exists
     const planExists = getSubscriptionPlans().some(p => p.id === user.activeSubscriptionPlanId);
     if (!planExists) {
-        // Plan was deleted, mark subscription as cancelled or expired
         return updateUser({ ...user, subscriptionStatus: SubscriptionStatus.CANCELLED, activeSubscriptionPlanId: undefined, subscriptionNotes: "Active subscription plan no longer available."});
     }
-
   } else if (user && user.subscriptionStatus === SubscriptionStatus.ACTIVE && !user.subscriptionExpiry) {
-    // This case handles if somehow an active sub has no expiry, mark as expired.
     return updateUser({ ...user, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription active but expiry date missing, marked as expired." });
   }
   return user;
+};
+
+// PDF Document Management
+export const getPdfDocuments = (): PdfDocument[] => getFromLocalStorage<PdfDocument[]>(LS_PDF_DOCUMENTS, []);
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
+export const addPdfDocument = async (
+  pdfDetails: Omit<PdfDocument, 'id' | 'uploadDate' | 'uploadedBy' | 'fileData' | 'fileName'>,
+  file: File,
+  adminId: string
+): Promise<PdfDocument> => {
+  if (file.size > PDF_MAX_SIZE_BYTES) {
+    throw new Error(`File is too large. Maximum size is ${PDF_MAX_SIZE_BYTES / (1024 * 1024)}MB.`);
+  }
+  if (file.type !== "application/pdf") {
+    throw new Error("Invalid file type. Only PDF files are allowed.");
+  }
+
+  const fileData = await fileToBase64(file);
+  const documents = getPdfDocuments();
+  const newDocument: PdfDocument = {
+    ...pdfDetails,
+    id: `pdf_${Date.now()}`,
+    fileName: file.name,
+    fileData,
+    uploadedBy: adminId,
+    uploadDate: new Date().toISOString(),
+  };
+  documents.push(newDocument);
+  saveToLocalStorage(LS_PDF_DOCUMENTS, documents);
+  return newDocument;
+};
+
+export const updatePdfDocument = (updatedPdf: PdfDocument): PdfDocument | undefined => {
+  let documents = getPdfDocuments();
+  const index = documents.findIndex(doc => doc.id === updatedPdf.id);
+  if (index !== -1) {
+    // Retain original fileData if not explicitly changed to avoid re-uploading or large data transfer
+    if (!updatedPdf.fileData && documents[index].fileData) {
+        updatedPdf.fileData = documents[index].fileData;
+        updatedPdf.fileName = documents[index].fileName;
+    }
+    documents[index] = updatedPdf;
+    saveToLocalStorage(LS_PDF_DOCUMENTS, documents);
+    return documents[index];
+  }
+  return undefined;
+};
+
+export const deletePdfDocument = (pdfId: string): boolean => {
+  let documents = getPdfDocuments();
+  const initialLength = documents.length;
+  documents = documents.filter(doc => doc.id !== pdfId);
+  if (documents.length < initialLength) {
+    saveToLocalStorage(LS_PDF_DOCUMENTS, documents);
+    return true;
+  }
+  return false;
+};
+
+export const getPdfsForUser = (userId: string): PdfDocument[] => {
+  const documents = getPdfDocuments();
+  return documents.filter(doc => doc.assignedUserIds.includes(userId));
 };

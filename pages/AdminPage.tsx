@@ -1,18 +1,19 @@
+
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { Routes, Route, Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth, useLocalization } from '../App';
 import { Button, Input, Card, Spinner, Modal, Textarea } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
-import { User, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserRole, SubscriptionPlan, SubscriptionPlanFeature } from '../types';
-import { THEME_COLORS, INITIAL_SUBSCRIPTION_PLANS } from '../constants';
+import { User, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserRole, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature } from '../types';
+import { THEME_COLORS, ADMIN_EMAIL, PDF_MAX_SIZE_BYTES } from '../constants';
 
 enum AdminSection {
   Users = "users",
   Videos = "videos",
   Recipes = "recipes",
+  Pdfs = "pdfs", // New section for PDF management
   Subscriptions = "subscriptions",
-  SubscriptionPlans = "subscription_plans", // New section
-  Content = "content"
+  SubscriptionPlans = "subscription_plans",
 }
 
 const AdminPage: React.FC = () => {
@@ -20,7 +21,7 @@ const AdminPage: React.FC = () => {
   const { currentUser } = useAuth();
   const [activeSection, setActiveSection] = useState<AdminSection>(AdminSection.Subscriptions);
 
-  if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+  if (!currentUser || (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SITE_MANAGER)) {
     return <p>{t('adminAccessOnly')}</p>; 
   }
 
@@ -40,19 +41,22 @@ const AdminPage: React.FC = () => {
         <h2 className="text-xl font-semibold text-white mb-4">{t('adminNavigation', 'لوحة التحكم')}</h2>
         <NavItem section={AdminSection.Subscriptions} label={t('approveSubscriptions')} />
         <NavItem section={AdminSection.SubscriptionPlans} label={t('manageSubscriptionPlans')} />
-        <NavItem section={AdminSection.Users} label={t('manageUsers')} />
+        {currentUser.role === UserRole.SITE_MANAGER && ( // Only Site Manager sees User Management for role changes
+            <NavItem section={AdminSection.Users} label={t('manageUsers')} />
+        )}
+         {/* All admins can manage content */}
+        <NavItem section={AdminSection.Pdfs} label={t('managePdfs')} />
         <NavItem section={AdminSection.Videos} label={t('manageVideos')} />
         <NavItem section={AdminSection.Recipes} label={t('manageRecipes')} />
-        {/* <NavItem section={AdminSection.Content} label={t('manageContent')} /> */}
       </aside>
       <main className="flex-grow">
         <Card className="p-6 min-h-full">
-            {activeSection === AdminSection.Users && <ManageUsersSection />}
+            {activeSection === AdminSection.Users && currentUser.role === UserRole.SITE_MANAGER && <ManageUsersSection />}
             {activeSection === AdminSection.Videos && <ManageVideosSection />}
             {activeSection === AdminSection.Recipes && <ManageRecipesSection />}
+            {activeSection === AdminSection.Pdfs && <ManagePdfsSection />}
             {activeSection === AdminSection.Subscriptions && <ApproveSubscriptionsSection />}
             {activeSection === AdminSection.SubscriptionPlans && <ManageSubscriptionPlansSection />}
-            {/* {activeSection === AdminSection.Content && <ManageContentSection />} */}
         </Card>
       </main>
     </div>
@@ -64,38 +68,105 @@ const AdminPage: React.FC = () => {
 
 const ManageUsersSection: React.FC = () => {
   const { t } = useLocalization();
+  const { currentUser } = useAuth(); // This is the logged-in admin/site manager
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [actionUser, setActionUser] = useState<User | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'promote' | 'demote' | null>(null);
+  const [feedback, setFeedback] = useState({type: '', message: ''});
+
+
   useEffect(() => {
     setUsers(DataService.getUsers());
     setLoading(false);
   }, []);
 
+  const handleRoleChange = (userToUpdate: User, newRole: UserRole) => {
+    if (!currentUser || currentUser.role !== UserRole.SITE_MANAGER) {
+        setFeedback({type: 'error', message: t('actionNotAllowed')});
+        return;
+    }
+    // Prevent Site Manager from demoting themselves
+    if (userToUpdate.email === ADMIN_EMAIL && newRole !== UserRole.SITE_MANAGER) {
+        setFeedback({type: 'error', message: t('cannotDemoteSelf')});
+        setIsConfirmModalOpen(false);
+        setActionUser(null);
+        setConfirmAction(null);
+        setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+        return;
+    }
+
+    try {
+      DataService.updateUser({ ...userToUpdate, role: newRole }, currentUser.id);
+      setUsers(DataService.getUsers()); // Refresh users list
+      setFeedback({type: 'success', message: t('roleUpdatedSuccess')});
+    } catch (error: any) {
+      console.error("Error updating role:", error);
+      setFeedback({type: 'error', message: error.message || t('errorOccurred')});
+    }
+    setIsConfirmModalOpen(false);
+    setActionUser(null);
+    setConfirmAction(null);
+     setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+  };
+
+  const openConfirmModal = (user: User, action: 'promote' | 'demote') => {
+    if (user.email === ADMIN_EMAIL && action === 'demote') {
+      setFeedback({type: 'error', message: t('cannotDemoteSelf')});
+      setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+      return;
+    }
+    // Prevent promoting ADMIN to SITE_MANAGER or demoting SITE_MANAGER via this flow
+    if ((action === 'promote' && user.role === UserRole.ADMIN) || 
+        (user.role === UserRole.SITE_MANAGER && action === 'demote')) {
+        setFeedback({type: 'error', message: t('actionNotAllowed')});
+        setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+        return;
+    }
+
+    setActionUser(user);
+    setConfirmAction(action);
+    setIsConfirmModalOpen(true);
+  };
+
+  const getRoleText = (role: UserRole) => {
+    if (role === UserRole.SITE_MANAGER) return t('siteManager');
+    if (role === UserRole.ADMIN) return t('adminPanel'); // "Admin"
+    return t('user'); // "User"
+  }
+
+
   if (loading) return <Spinner />;
+  if (currentUser?.role !== UserRole.SITE_MANAGER) {
+      return <p>{t('adminAccessOnly')}</p>; // Should not happen due to parent check, but good fallback
+  }
 
   return (
     <div>
       <h2 className="text-2xl font-semibold text-white mb-4">{t('manageUsers')}</h2>
+      {feedback.message && <p className={`mb-4 p-2 rounded text-sm ${feedback.type === 'success' ? 'bg-green-700 text-green-100' : 'bg-red-700 text-red-100'}`}>{feedback.message}</p>}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-700">
             <tr>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('name')}</th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('email')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('phoneNumber')}</th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('role', 'الدور')}</th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('subscriptionStatus', 'حالة الاشتراك')}</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('plan', 'الخطة الحالية')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('actions')}</th>
             </tr>
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
             {users.map(user => {
-              const plan = user.activeSubscriptionPlanId ? DataService.getSubscriptionPlans().find(p => p.id === user.activeSubscriptionPlanId) : null;
+              const isTargetSiteManager = user.email === ADMIN_EMAIL && user.role === UserRole.SITE_MANAGER;
               return (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{user.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{t(user.role.toLowerCase(), user.role)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.phoneNumber || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{getRoleText(user.role)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         user.subscriptionStatus === SubscriptionStatus.ACTIVE ? `bg-green-100 text-green-800` :
@@ -106,16 +177,44 @@ const ManageUsersSection: React.FC = () => {
                         `bg-gray-200 text-gray-800`}`}>
                       {user.subscriptionStatus ? t(user.subscriptionStatus.toLowerCase(), user.subscriptionStatus) : t('notSubscribedYet', 'لم يشترك بعد')}
                     </span>
-                    {user.subscriptionExpiry && (user.subscriptionStatus === SubscriptionStatus.ACTIVE || user.subscriptionStatus === SubscriptionStatus.EXPIRED) && 
-                      <span className="text-xs block text-gray-400"> ({t('expiresOn')} {new Date(user.subscriptionExpiry).toLocaleDateString('ar-EG')})</span>}
                   </td>
-                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{plan ? plan.name : user.activeSubscriptionPlanId ? t('planNotFoundOrDeleted', 'خطة محذوفة') : 'N/A'}</td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                     {currentUser?.role === UserRole.SITE_MANAGER && !isTargetSiteManager && (
+                       user.role === UserRole.USER ? (
+                         <Button onClick={() => openConfirmModal(user, 'promote')} size="sm" variant="secondary">{t('promoteToAdmin')}</Button>
+                       ) : user.role === UserRole.ADMIN ? ( // Only SITE_MANAGER can demote ADMIN
+                         <Button onClick={() => openConfirmModal(user, 'demote')} size="sm" variant="danger">{t('demoteToUser')}</Button>
+                       ) : null
+                     )}
+                     {isTargetSiteManager && <span className="text-xs text-gray-500">{t('cannotModifySiteManager')}</span>}
+                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      {isConfirmModalOpen && actionUser && confirmAction && (
+        <Modal
+          isOpen={isConfirmModalOpen}
+          onClose={() => setIsConfirmModalOpen(false)}
+          title={t('confirm', 'تأكيد الإجراء')}
+        >
+          <p className="text-gray-300 mb-4">
+            {confirmAction === 'promote' ? t('confirmPromotion') : t('confirmDemotion')}
+            <strong className="mx-1">{actionUser.name} ({actionUser.email})</strong>?
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setIsConfirmModalOpen(false)}>{t('cancel')}</Button>
+            <Button
+              variant={confirmAction === 'promote' ? 'primary' : 'danger'}
+              onClick={() => handleRoleChange(actionUser, confirmAction === 'promote' ? UserRole.ADMIN : UserRole.USER)}
+            >
+              {t('confirm')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -172,6 +271,7 @@ const ManageVideosSection: React.FC = () => {
         <h2 className="text-2xl font-semibold text-white">{t('manageVideos')}</h2>
         <Button onClick={openModalForAdd}>{t('addVideo')}</Button>
       </div>
+      {videos.length === 0 && <p className="text-gray-400 text-center">{t('noVideosFound')}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {videos.map(video => (
           <Card key={video.id} className="p-4">
@@ -296,6 +396,7 @@ const ManageRecipesSection: React.FC = () => {
         <h2 className="text-2xl font-semibold text-white">{t('manageRecipes')}</h2>
         <Button onClick={openModalForAdd}>{t('addRecipe')}</Button>
       </div>
+      {recipes.length === 0 && <p className="text-gray-400 text-center">{t('noRecipesFound')}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {recipes.map(recipe => (
           <Card key={recipe.id} className="p-4">
@@ -416,6 +517,236 @@ const RecipeFormModal: React.FC<RecipeFormModalProps> = ({ isOpen, onClose, reci
     );
 };
 
+
+// PDF Management Section
+const ManagePdfsSection: React.FC = () => {
+  const { t } = useLocalization();
+  const { currentUser } = useAuth();
+  const [pdfs, setPdfs] = useState<PdfDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPdf, setCurrentPdf] = useState<Partial<PdfDocument> & { file?: File } | null>(null);
+  const [feedback, setFeedback] = useState({type: '', message: ''});
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    setPdfs(DataService.getPdfDocuments());
+    setAllUsers(DataService.getUsers().filter(u => u.role === UserRole.USER)); // Only assign to regular users
+    setLoading(false);
+  }, []);
+
+  const refreshPdfs = () => {
+    setPdfs(DataService.getPdfDocuments());
+  };
+
+  const openModalForAdd = () => {
+    setCurrentPdf({ description: '', assignedUserIds: [] });
+    setIsModalOpen(true);
+  };
+
+  const openModalForEdit = (pdf: PdfDocument) => {
+    setCurrentPdf({ ...pdf }); // File data not needed for edit unless re-uploading
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (pdfId: string) => {
+    if (window.confirm(t('confirmDeletePdf'))) {
+      DataService.deletePdfDocument(pdfId);
+      refreshPdfs();
+      setFeedback({type: 'success', message: t('pdfDeletedSuccess')});
+      setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+    }
+  };
+  
+  const handleSavePdf = async (pdfData: Partial<PdfDocument> & { file?: File }) => {
+    if (!currentUser) return;
+    setLoading(true);
+    setFeedback({type: '', message: ''});
+
+    try {
+      if (pdfData.id) { // Editing existing PDF
+        DataService.updatePdfDocument(pdfData as PdfDocument);
+        setFeedback({type: 'success', message: t('pdfUpdatedSuccess')});
+      } else if (pdfData.file) { // Adding new PDF
+        await DataService.addPdfDocument(
+          { description: pdfData.description || '', assignedUserIds: pdfData.assignedUserIds || [] },
+          pdfData.file,
+          currentUser.id
+        );
+        setFeedback({type: 'success', message: t('pdfUploadedSuccess')});
+      } else {
+        throw new Error("File is required for new PDF upload.");
+      }
+      refreshPdfs();
+      setIsModalOpen(false);
+      setCurrentPdf(null);
+    } catch (error: any) {
+        console.error("Error saving PDF:", error);
+        setFeedback({type: 'error', message: error.message || t('errorOccurred')});
+    } finally {
+        setLoading(false);
+        setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
+    }
+  };
+
+  if (loading && !isModalOpen) return <Spinner />;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold text-white">{t('managePdfs')}</h2>
+        <Button onClick={openModalForAdd} isLoading={loading && isModalOpen}>{t('uploadPdf')}</Button>
+      </div>
+      {feedback.message && <p className={`mb-4 p-2 rounded text-sm ${feedback.type === 'success' ? 'bg-green-700 text-green-100' : 'bg-red-700 text-red-100'}`}>{feedback.message}</p>}
+      
+      {pdfs.length === 0 && <p className="text-gray-400 text-center">{t('noPdfsUploaded')}</p>}
+      <div className="space-y-4">
+        {pdfs.map(pdf => (
+          <Card key={pdf.id} className="p-4">
+            <div className="flex flex-col md:flex-row justify-between md:items-start">
+                <div className="flex-grow">
+                    <h3 className={`text-xl font-semibold text-${THEME_COLORS.primary}`}>{pdf.fileName}</h3>
+                    <p className="text-sm text-gray-300 mt-1">{pdf.description}</p>
+                    <p className="text-xs text-gray-400 mt-1">{t('uploadDate')}: {new Date(pdf.uploadDate).toLocaleDateString('ar-EG')}</p>
+                     {pdf.assignedUserIds.length > 0 && (
+                        <div className="mt-2">
+                            <p className="text-xs font-semibold text-gray-200">{t('assignedUsers')}</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                            {pdf.assignedUserIds.map(userId => {
+                                const user = allUsers.find(u => u.id === userId);
+                                return user ? <span key={userId} className="text-xs bg-gray-600 text-gray-200 px-2 py-0.5 rounded-full">{user.name}</span> : null;
+                            })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="flex gap-2 mt-3 md:mt-0 self-start md:self-center flex-shrink-0">
+                    <Button onClick={() => openModalForEdit(pdf)} size="sm" variant="secondary">{t('edit')}</Button>
+                    <Button onClick={() => handleDelete(pdf.id)} size="sm" variant="danger">{t('delete')}</Button>
+                </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+      {isModalOpen && currentPdf && (
+        <PdfFormModal 
+            isOpen={isModalOpen} 
+            onClose={() => { setIsModalOpen(false); setCurrentPdf(null); }}
+            pdfData={currentPdf}
+            onSave={handleSavePdf}
+            allUsers={allUsers}
+            isLoading={loading && isModalOpen}
+        />
+      )}
+    </div>
+  );
+};
+
+interface PdfFormModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    pdfData: Partial<PdfDocument> & { file?: File };
+    onSave: (data: Partial<PdfDocument> & { file?: File }) => void;
+    allUsers: User[];
+    isLoading: boolean;
+}
+const PdfFormModal: React.FC<PdfFormModalProps> = ({ isOpen, onClose, pdfData, onSave, allUsers, isLoading }) => {
+    const { t } = useLocalization();
+    const [formData, setFormData] = useState<Partial<PdfDocument> & { file?: File }>(pdfData);
+    const [fileError, setFileError] = useState<string>('');
+    
+    useEffect(() => setFormData(pdfData), [pdfData]);
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFileError('');
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > PDF_MAX_SIZE_BYTES) {
+                setFileError(`File is too large. Max size: ${PDF_MAX_SIZE_BYTES / (1024*1024)}MB`);
+                setFormData(prev => ({ ...prev, file: undefined }));
+                return;
+            }
+            if (file.type !== "application/pdf") {
+                setFileError("Invalid file type. Only PDF files are allowed.");
+                setFormData(prev => ({ ...prev, file: undefined }));
+                return;
+            }
+            setFormData(prev => ({ ...prev, file }));
+        }
+    };
+    
+    const handleUserAssignmentChange = (userId: string) => {
+        setFormData(prev => {
+            const assignedUserIds = prev.assignedUserIds ? [...prev.assignedUserIds] : [];
+            const userIndex = assignedUserIds.indexOf(userId);
+            if (userIndex > -1) {
+                assignedUserIds.splice(userIndex, 1); // Unassign
+            } else {
+                assignedUserIds.push(userId); // Assign
+            }
+            return { ...prev, assignedUserIds };
+        });
+    };
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        if (!formData.id && !formData.file) { // If new PDF, file is required
+            setFileError("Please select a PDF file to upload.");
+            return;
+        }
+        if (fileError && formData.file) return; // Don't submit if there's a file error related to the current file
+        onSave(formData);
+    };
+    
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={formData.id ? t('editPdfAssignments') : t('uploadPdf')} size="lg">
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto p-1">
+                {!formData.id && ( // Only show file input for new PDFs
+                    <div>
+                        <label htmlFor="pdfFile" className={`block text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('selectPdfFile')}</label>
+                        <Input id="pdfFile" name="file" type="file" accept=".pdf" onChange={handleFileChange} required={!formData.id} />
+                        {fileError && <p className="text-xs text-red-400 mt-1">{fileError}</p>}
+                    </div>
+                )}
+                {formData.id && formData.fileName && <p className="text-gray-300"><strong>{t('pdfFileName')}:</strong> {formData.fileName}</p>}
+                <Textarea label={t('pdfDescription')} name="description" value={formData.description || ''} onChange={handleChange} required />
+                
+                <div>
+                    <h4 className="text-md font-semibold mb-2 text-gray-200">{t('selectUsersToAssign')}</h4>
+                    {allUsers.length === 0 && <p className="text-sm text-gray-400">{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
+                    <div className="max-h-40 overflow-y-auto space-y-2 border border-gray-700 p-2 rounded-md">
+                        {allUsers.map(user => (
+                            <div key={user.id} className="flex items-center">
+                                <input 
+                                    type="checkbox"
+                                    id={`user-assign-${user.id}`}
+                                    checked={formData.assignedUserIds?.includes(user.id) || false}
+                                    onChange={() => handleUserAssignmentChange(user.id)}
+                                    className={`w-4 h-4 text-${THEME_COLORS.primary} bg-gray-700 border-gray-600 rounded focus:ring-${THEME_COLORS.primary} focus:ring-2`}
+                                />
+                                <label htmlFor={`user-assign-${user.id}`} className="ms-2 text-sm font-medium text-gray-300">{user.name} ({user.email})</label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-gray-700">
+                    <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>{t('cancel')}</Button>
+                    <Button type="submit" isLoading={isLoading} disabled={isLoading || (fileError && !!formData.file) || (!formData.id && !formData.file)}>
+                        {formData.id ? t('saveChanges') : t('uploadPdf')}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+
 // Manage Subscription Plans Section
 const ManageSubscriptionPlansSection: React.FC = () => {
   const { t } = useLocalization();
@@ -457,12 +788,11 @@ const ManageSubscriptionPlansSection: React.FC = () => {
   };
   
   const handleSavePlan = (planData: Partial<SubscriptionPlan>) => {
-    // Filter out empty features before saving
     const featuresToSave = (planData.features || []).filter(f => f.text.trim() !== '');
 
-    if (planData.id) { // Editing existing
+    if (planData.id) { 
         DataService.updateSubscriptionPlan({...planData, features: featuresToSave} as SubscriptionPlan);
-    } else { // Adding new
+    } else { 
         DataService.addSubscriptionPlan(planData as Omit<SubscriptionPlan, 'id'>);
     }
     refreshPlans();
@@ -534,7 +864,8 @@ const SubscriptionPlanFormModal: React.FC<SubscriptionPlanFormModalProps> = ({ i
 
     const handleFeatureChange = (index: number, value: string) => {
         const newFeatures = [...(formData.features || [])];
-        newFeatures[index] = { ...newFeatures[index], text: value };
+        newFeatures[index] = { ...newFeatures[index], text: value }; // Keep ID if exists
+        if (!newFeatures[index].id) newFeatures[index].id = `new_feat_edit_${Date.now()}_${index}`;
         setFormData(prev => ({ ...prev, features: newFeatures }));
     };
 
@@ -609,7 +940,7 @@ const ApproveSubscriptionsSection: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     setRequests(DataService.getSubscriptionRequests().filter(r => r.status === SubscriptionStatus.PENDING));
-    setAllPlans(DataService.getSubscriptionPlans()); // Load all plans for reference
+    setAllPlans(DataService.getSubscriptionPlans());
     setLoading(false);
   }, []);
   
@@ -619,8 +950,6 @@ const ApproveSubscriptionsSection: React.FC = () => {
 
   const handleApprove = (requestId: string) => {
     if (!currentUser) return;
-    // Use a default duration (e.g., 30 days) if not set or if plan has no default.
-    // The specific plan's default duration is not directly used here anymore as it's removed from SubscriptionPlan type.
     const days = durationDays[requestId] || 30; 
     DataService.approveSubscription(requestId, currentUser.id, days);
     refreshRequests();
@@ -646,7 +975,6 @@ const ApproveSubscriptionsSection: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {requests.map(req => {
-            // const planDetails = allPlans.find(p => p.id === req.planId); // Get current details of the plan
             return (
               <Card key={req.id} className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
@@ -656,15 +984,15 @@ const ApproveSubscriptionsSection: React.FC = () => {
                         <Input 
                             type="number" 
                             label={t('setDuration')}
-                            value={durationDays[req.id] || ''} // Default to empty or a general default like 30
+                            value={durationDays[req.id] || ''} 
                             onChange={(e) => handleDurationChange(req.id, e.target.value)}
                             min="1"
-                            placeholder={t('defaultDurationDays')}
+                            placeholder={t('durationDaysPlaceholder')}
                             aria-describedby={`duration-help-${req.id}`}
                         />
                          <small id={`duration-help-${req.id}`} className="text-xs text-gray-400 mt-1 hidden">{t('daysDurationHelp', 'أدخل عدد أيام صلاحية الاشتراك.')}</small>
                     </div>
-                    <div className="flex gap-2 justify-end self-end"> {/* Ensure buttons align well */}
+                    <div className="flex gap-2 justify-end self-end md:self-center">
                         <Button onClick={() => handleApprove(req.id)} size="sm" variant="primary" disabled={!durationDays[req.id] || durationDays[req.id] <=0 }>{t('approve')}</Button>
                         <Button onClick={() => handleReject(req.id)} size="sm" variant="danger">{t('reject')}</Button>
                     </div>

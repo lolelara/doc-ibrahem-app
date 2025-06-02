@@ -14,7 +14,7 @@ const AuthPage: React.FC = () => {
   const { t } = useLocalization();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || (currentUser?.role === UserRole.ADMIN ? "/admin" : "/user/dashboard");
+  const from = location.state?.from?.pathname || (currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SITE_MANAGER ? "/admin" : "/user/dashboard");
 
   useEffect(() => {
     if (currentUser) {
@@ -65,7 +65,7 @@ const LoginForm: React.FC = () => {
     if (user && (user.password === password || (user.email === ADMIN_EMAIL && password === 'adminpassword'))) { // Simplified password check
       const checkedUser = DataService.checkUserSubscriptionStatus(user.id);
       setCurrentUser(checkedUser || user);
-      navigate(user.role === UserRole.ADMIN ? '/admin' : from, { replace: true });
+      navigate(user.role === UserRole.ADMIN || user.role === UserRole.SITE_MANAGER ? '/admin' : from, { replace: true });
     } else {
       setError(t('loginFailed'));
     }
@@ -85,6 +85,7 @@ const LoginForm: React.FC = () => {
 const RegisterForm: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -111,24 +112,21 @@ const RegisterForm: React.FC = () => {
       return;
     }
 
-    const newUser: Omit<User, 'id'> = {
+    const newUserBase: Omit<User, 'id' | 'role'> = {
       email,
       password, // Store password temporarily, real app would hash it
       name,
-      role: UserRole.USER, // Default role
+      phoneNumber,
       subscriptionStatus: undefined,
     };
     
     try {
-      const registeredUser = DataService.addUser(newUser as User); // Cast as User because addUser assigns ID
+      // Role will be assigned by addUser based on email or default
+      const registeredUser = DataService.addUser(newUserBase); 
       setSuccess(t('registrationSuccessful'));
-      // Optionally auto-login:
-      // setCurrentUser(registeredUser);
-      // navigate("/user/dashboard", { replace: true });
-      // For now, just show success and let them login manually
-      setName(''); setEmail(''); setPassword(''); setConfirmPassword('');
-    } catch (err) {
-      setError(t('errorOccurred'));
+      setName(''); setEmail(''); setPassword(''); setConfirmPassword(''); setPhoneNumber('');
+    } catch (err: any) {
+      setError(err.message || t('errorOccurred'));
     }
 
     setIsLoading(false);
@@ -138,6 +136,7 @@ const RegisterForm: React.FC = () => {
     <form className="space-y-6" onSubmit={handleSubmit}>
       <Input id="name-register" label={t('name')} type="text" value={name} onChange={e => setName(e.target.value)} required autoComplete="name" />
       <Input id="email-register" label={t('email')} type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" />
+      <Input id="phone-register" label={t('phoneNumber') + ` (${t('optional')})`} type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} autoComplete="tel" />
       <Input id="password-register" label={t('password')} type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="new-password" />
       <Input id="confirm-password-register" label={t('confirmPassword')} type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required autoComplete="new-password" />
       {error && <p className="text-sm text-red-400 text-center">{error}</p>}
