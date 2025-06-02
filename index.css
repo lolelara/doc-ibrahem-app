@@ -1,4 +1,50 @@
-/* Global styles can be added here if needed. 
-   For now, this file primarily exists to resolve the 404 error.
-   If you integrate Tailwind CSS into the build process, 
-   Tailwind directives like @tailwind base; @tailwind components; @tailwind utilities; would go here. */
+
+/* Global styles. Tailwind is primarily used via CDN script in index.html */
+/* The body font and background are set in index.html <style> and <body> class for immediate effect */
+
+/* Webkit custom scrollbar (already in index.html, kept here for completeness if index.html styles are moved) */
+::-webkit-scrollbar {
+  width: 10px; /* Slightly wider for better grab */
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b; /* slate-800 / surface */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0284c7; /* sky-600 / primary */
+  border-radius: 10px;
+  border: 2px solid #1e293b; /* Creates a padding effect */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0369a1; /* sky-700 / primaryHover */
+}
+
+/* Ensure focus styles are visible and consistent if not handled by Tailwind's focus:ring */
+*:focus-visible {
+  outline: 2px solid #38bdf8; /* sky-400 or another accent */
+  outline-offset: 2px;
+}
+
+/* Basic animation for page transitions if React Router transitions were added later */
+.page-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 300ms, transform 300ms;
+}
+.page-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+.page-exit-active {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 300ms, transform 300ms;
+}

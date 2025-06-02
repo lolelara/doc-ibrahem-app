@@ -5,18 +5,42 @@ export const APP_NAME = "My Fit Coach";
 export const ADMIN_EMAIL = "lolelarap@gmail.com"; // Hardcoded admin email updated
 
 export const THEME_COLORS = {
-  primary: 'emerald-500', // A vibrant green
-  primaryHover: 'emerald-600',
-  secondary: 'sky-500',
-  secondaryHover: 'sky-600',
-  accent: 'amber-400',
-  background: 'gray-900',
-  surface: 'gray-800',
-  textPrimary: 'white',
-  textSecondary: 'gray-300',
+  primary: 'sky-600', 
+  primaryHover: 'sky-700',
+  secondary: 'lime-500',
+  secondaryHover: 'lime-600',
+  accent: 'rose-500', // Changed from amber
+  accentHover: 'rose-600',
+  background: 'slate-900', // Slightly softer dark
+  surface: 'slate-800', // For cards, modals
+  textPrimary: 'slate-100', // Brighter white for primary text
+  textSecondary: 'slate-400', // Softer gray for secondary text
   error: 'red-500',
   success: 'green-500',
 };
+
+export const COUNTRIES_LIST = [
+  { code: '', name: 'اختر الدولة...' }, // Default empty option
+  { code: 'EG', name: 'مصر' },
+  { code: 'SA', name: 'السعودية' },
+  { code: 'AE', name: 'الإمارات العربية المتحدة' },
+  { code: 'KW', name: 'الكويت' },
+  { code: 'QA', name: 'قطر' },
+  { code: 'BH', name: 'البحرين' },
+  { code: 'OM', name: 'عمان' },
+  { code: 'JO', name: 'الأردن' },
+  { code: 'LB', name: 'لبنان' },
+  { code: 'DZ', name: 'الجزائر' },
+  { code: 'MA', name: 'المغرب' },
+  { code: 'TN', name: 'تونس' },
+  { code: 'US', name: 'الولايات المتحدة' },
+  { code: 'GB', name: 'المملكة المتحدة' },
+  { code: 'CA', name: 'كندا' },
+  { code: 'AU', name: 'أستراليا' }, // Corrected entry
+  { code: 'DE', name: 'ألمانيا' },
+  { code: 'FR', name: 'فرنسا' },
+  // Add more countries as needed
+];
 
 export const AR_TRANSLATIONS: Translations = {
   appName: "My Fit Coach",
@@ -27,6 +51,7 @@ export const AR_TRANSLATIONS: Translations = {
   password: "كلمة المرور",
   name: "الاسم الكامل",
   phoneNumber: "رقم الهاتف",
+  country: "الدولة",
   confirmPassword: "تأكيد كلمة المرور",
   dashboard: "لوحة التحكم",
   profile: "الملف الشخصي",
@@ -222,7 +247,33 @@ export const AR_TRANSLATIONS: Translations = {
   selectUsersToAssign: "اختر المستخدمين لتعيين الملف لهم:",
   assignedUsers: "المستخدمون المعين لهم:",
 
-  // Macronutrient Calculator translations REMOVED
+  // Site Manager User Editing
+  editUserInfo: "تعديل معلومات المستخدم",
+  deleteUser: "حذف المستخدم",
+  confirmDeleteUser: "هل أنت متأكد أنك تريد حذف المستخدم {userName}؟ سيتم حذف جميع بياناته المتعلقة بالاشتراكات وملفات PDF.",
+  confirmEmailChange: "هل أنت متأكد أنك تريد تغيير البريد الإلكتروني للمستخدم؟ قد يحتاج المستخدم لتسجيل الدخول بالبريد الجديد.",
+  newPassword: "كلمة المرور الجديدة",
+  confirmNewPassword: "تأكيد كلمة المرور الجديدة",
+  userDeletedSuccess: "تم حذف المستخدم بنجاح.",
+  userInfoUpdatedSuccess: "تم تحديث معلومات المستخدم بنجاح.",
+  cannotDeleteSelfAccount: "لا يمكنك حذف حسابك كمدير للموقع.",
+  cannotEditSelfDetailsInThisModal: "لتعديل تفاصيل حسابك، يرجى استخدام صفحة الملف الشخصي.",
+  emailAlreadyExists: "هذا البريد الإلكتروني مستخدم بالفعل من قبل مستخدم آخر.",
+  fieldRequired: "هذا الحقل مطلوب.",
+  pleaseSelectCountry: "يرجى اختيار الدولة.",
+
+  // Global Notifications
+  globalNotifications: "الإشعارات العامة",
+  sendGlobalNotification: "إرسال إشعار عام",
+  notificationMessage: "نص الإشعار",
+  sendToAllUsers: "إرسال لجميع المستخدمين",
+  notificationSentSuccess: "تم إرسال الإشعار بنجاح.",
+  viewNotifications: "عرض الإشعارات",
+  noNewNotifications: "لا توجد إشعارات جديدة.",
+  markAsRead: "وضع علامة كمقروء",
+  markAllAsRead: "وضع علامة على الكل كمقروء",
+  newNotification: "إشعار جديد!",
+  notifications: "الإشعارات",
 };
 
 export const INITIAL_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [

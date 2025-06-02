@@ -6,30 +6,33 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Fit Coach</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.1"></script> <!-- Updated Tailwind CDN -->
   <style>
     body {
-      font-family: 'Cairo', 'sans-serif'; /* A common Arabic font */
+      font-family: 'Cairo', 'sans-serif';
+      background-color: #0f172a; /* slate-900 */
     }
     /* Custom scrollbar for webkit browsers */
     ::-webkit-scrollbar {
       width: 8px;
+      height: 8px;
     }
     ::-webkit-scrollbar-track {
-      background: #f1f1f1;
+      background: #1e293b; /* slate-800 / surface */
     }
     ::-webkit-scrollbar-thumb {
-      background: #888;
+      background: #0284c7; /* sky-600 / primary */
       border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #555;
+      background: #0369a1; /* sky-700 / primaryHover */
     }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
   <!-- Importmap has been REMOVED. Vite will handle dependencies. -->
+
 <script type="importmap">
 {
   "imports": {
@@ -45,10 +48,9 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-gray-900 text-white">
+<body class="bg-slate-900 text-slate-100"> <!-- Updated base classes -->
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script> 
-  <!-- Vite will process this index.html and the script tag referring to index.tsx -->
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>

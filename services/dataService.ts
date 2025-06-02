@@ -1,6 +1,6 @@
 
-import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature } from '../types';
-import { ADMIN_EMAIL, INITIAL_WORKOUT_VIDEOS, INITIAL_RECIPES, INITIAL_SUBSCRIPTION_PLANS, PDF_MAX_SIZE_BYTES } from '../constants';
+import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature, Notification } from '../types';
+import { ADMIN_EMAIL, INITIAL_WORKOUT_VIDEOS, INITIAL_RECIPES, INITIAL_SUBSCRIPTION_PLANS, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST } from '../constants';
 
 const LS_USERS = 'fitzone_users';
 const LS_WORKOUT_VIDEOS = 'fitzone_workout_videos';
@@ -8,6 +8,7 @@ const LS_RECIPES = 'fitzone_recipes';
 const LS_SUBSCRIPTION_REQUESTS = 'fitzone_subscription_requests';
 const LS_SUBSCRIPTION_PLANS = 'fitzone_subscription_plans';
 const LS_PDF_DOCUMENTS = 'fitzone_pdf_documents';
+const LS_GLOBAL_NOTIFICATIONS = 'fitzone_global_notifications';
 
 
 const getFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
@@ -38,11 +39,15 @@ const initializeData = () => {
 
   let foundTargetAdmin = false;
   users = users.map(user => {
-    const userWithPhone = { ...user, phoneNumber: user.phoneNumber || '' };
+    const userWithPhoneAndCountry = { 
+        ...user, 
+        phoneNumber: user.phoneNumber || '',
+        country: user.country || COUNTRIES_LIST[0]?.code || '' // Default to first country or empty string
+    };
     if (user.email === targetAdminEmail) {
       foundTargetAdmin = true;
       return {
-        ...userWithPhone,
+        ...userWithPhoneAndCountry,
         role: UserRole.SITE_MANAGER, // Site Manager
         name: user.name || 'Site Manager', 
         password: user.password || 'adminpassword', 
@@ -50,9 +55,9 @@ const initializeData = () => {
     }
     // Demote any other user who might have been SITE_MANAGER or ADMIN (if not ADMIN_EMAIL)
     if (user.role === UserRole.SITE_MANAGER || (user.role === UserRole.ADMIN && user.email !== targetAdminEmail)) {
-      return { ...userWithPhone, role: UserRole.USER };
+      return { ...userWithPhoneAndCountry, role: UserRole.USER };
     }
-    return userWithPhone;
+    return userWithPhoneAndCountry;
   });
 
   if (!foundTargetAdmin) {
@@ -62,6 +67,7 @@ const initializeData = () => {
       password: 'adminpassword', 
       name: 'Site Manager',
       phoneNumber: '', 
+      country: COUNTRIES_LIST[0]?.code || '',
       role: UserRole.SITE_MANAGER,
     };
     users.push(newAdmin);
@@ -83,6 +89,9 @@ const initializeData = () => {
   if (getFromLocalStorage<PdfDocument[]>(LS_PDF_DOCUMENTS, []).length === 0) {
     saveToLocalStorage(LS_PDF_DOCUMENTS, []);
   }
+  if (getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []).length === 0) {
+    saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, []);
+  }
 };
 
 
@@ -102,11 +111,16 @@ export const addUser = (user: Omit<User, 'id' | 'role'> & { role?: UserRole }): 
     role = user.role;
   }
 
+  if (!user.phoneNumber) { // Phone number is now mandatory
+    throw new Error("Phone number is required.");
+  }
+
   const newUser: User = {
     ...user,
     id: `user_${Date.now()}`,
     role: role,
-    phoneNumber: user.phoneNumber || '',
+    phoneNumber: user.phoneNumber, // Already checked for presence
+    country: user.country || COUNTRIES_LIST[0]?.code || '',
   };
   
   if (user.email === ADMIN_EMAIL && newUser.role !== UserRole.SITE_MANAGER) {
@@ -118,48 +132,138 @@ export const addUser = (user: Omit<User, 'id' | 'role'> & { role?: UserRole }): 
   return newUser;
 };
 
-export const updateUser = (updatedUser: User, currentUserId?: string): User | undefined => {
+export const updateUser = (updatedUserPartial: Partial<User> & { id: string }, currentUserId?: string): User | undefined => {
   let users = getUsers();
-  const index = users.findIndex(u => u.id === updatedUser.id);
+  const index = users.findIndex(u => u.id === updatedUserPartial.id);
   if (index === -1) return undefined;
 
   const originalUser = users[index];
   const currentUserPerformingAction = currentUserId ? getUserById(currentUserId) : null;
 
-  // Role change logic
-  if (originalUser.role !== updatedUser.role) {
+  let finalUpdatedUser: User = { ...originalUser, ...updatedUserPartial };
+
+  // Role change logic - only Site Manager can change roles
+  if (updatedUserPartial.role && originalUser.role !== updatedUserPartial.role) {
     if (!currentUserPerformingAction || currentUserPerformingAction.role !== UserRole.SITE_MANAGER) {
       throw new Error("Only the Site Manager can change user roles.");
     }
-    if (originalUser.email === ADMIN_EMAIL && updatedUser.role !== UserRole.SITE_MANAGER) {
+    if (originalUser.email === ADMIN_EMAIL && updatedUserPartial.role !== UserRole.SITE_MANAGER) {
+      // Prevent demoting the site manager account itself
       throw new Error("The Site Manager role cannot be changed or demoted by anyone, including themselves.");
     }
-    if (updatedUser.role === UserRole.SITE_MANAGER && originalUser.email !== ADMIN_EMAIL) {
+    if (updatedUserPartial.role === UserRole.SITE_MANAGER && originalUser.email !== ADMIN_EMAIL) {
       throw new Error("Only the designated email can be Site Manager.");
     }
     // Site Manager can promote USER to ADMIN or demote ADMIN to USER.
-    // Cannot promote to SITE_MANAGER (this is fixed to ADMIN_EMAIL).
-    if (updatedUser.role === UserRole.SITE_MANAGER) updatedUser.role = UserRole.ADMIN; // Prevent accidental promotion to Site Manager
+    // An ADMIN cannot be promoted to SITE_MANAGER this way.
+    if (updatedUserPartial.role === UserRole.SITE_MANAGER && originalUser.role !== UserRole.SITE_MANAGER) {
+        finalUpdatedUser.role = UserRole.ADMIN; // Correct accidental promotion attempt
+    } else {
+        finalUpdatedUser.role = updatedUserPartial.role;
+    }
+  } else {
+    // Ensure role is not accidentally changed if not part of updatedUserPartial
+    finalUpdatedUser.role = originalUser.role; 
+  }
 
-  } else if (originalUser.role === UserRole.ADMIN && updatedUser.role === UserRole.ADMIN && originalUser.id !== updatedUser.id) {
-    // This case implies an admin trying to edit another admin, which is fine for non-role properties.
-    // Role change for admins is handled above by SiteManager only.
-  } else if (originalUser.id === updatedUser.id && updatedUser.email === ADMIN_EMAIL && updatedUser.role !== UserRole.SITE_MANAGER) {
-    // If user is updating their own profile and they are the ADMIN_EMAIL, ensure their role remains SITE_MANAGER.
-     updatedUser.role = UserRole.SITE_MANAGER;
+  // Site Manager editing other user's sensitive info (email, password)
+  if (currentUserPerformingAction && currentUserPerformingAction.role === UserRole.SITE_MANAGER && originalUser.id !== currentUserPerformingAction.id) {
+    // Email change
+    if (updatedUserPartial.email && updatedUserPartial.email !== originalUser.email) {
+      if (updatedUserPartial.email === ADMIN_EMAIL) {
+        throw new Error("Cannot change another user's email to the Site Manager's email.");
+      }
+      const emailExists = users.some(u => u.email === updatedUserPartial.email && u.id !== originalUser.id);
+      if (emailExists) {
+        throw new Error("This email address is already in use by another user.");
+      }
+      finalUpdatedUser.email = updatedUserPartial.email;
+    }
+
+    // Password change by Site Manager for another user
+    if (updatedUserPartial.password) { // password field in partial means intent to change
+      finalUpdatedUser.password = updatedUserPartial.password;
+    }
+  } else if (originalUser.id === updatedUserPartial.id) { // User editing their own profile
+      if (updatedUserPartial.email && updatedUserPartial.email !== originalUser.email && originalUser.email === ADMIN_EMAIL) {
+         throw new Error("Site Manager cannot change their primary email address through profile edit.");
+      }
+       // If user is updating their own profile and they are the ADMIN_EMAIL, ensure their role remains SITE_MANAGER.
+      if (originalUser.email === ADMIN_EMAIL) {
+        finalUpdatedUser.role = UserRole.SITE_MANAGER;
+      }
+      // For self-update, password change should be handled via a separate "Change Password" form, not here directly.
+      // If password property is present in updatedUserPartial for self-update, it's likely from the registration flow.
+      // We preserve the original password if not explicitly changing via Site Manager action for another user.
+      if (!updatedUserPartial.password && originalUser.password) {
+        finalUpdatedUser.password = originalUser.password;
+      }
   }
 
 
-  users[index] = { ...users[index], ...updatedUser };
+  users[index] = finalUpdatedUser;
   saveToLocalStorage(LS_USERS, users);
   return users[index];
 };
+
+
+export const deleteUser = (userIdToDelete: string, siteManagerId: string): boolean => {
+  let users = getUsers();
+  const siteManager = getUserById(siteManagerId);
+
+  if (!siteManager || siteManager.role !== UserRole.SITE_MANAGER) {
+    throw new Error("Only the Site Manager can delete users.");
+  }
+
+  if (userIdToDelete === siteManagerId) {
+    throw new Error("Site Manager cannot delete their own account.");
+  }
+
+  const userIndex = users.findIndex(u => u.id === userIdToDelete);
+  if (userIndex === -1) {
+    return false; // User not found
+  }
+
+  users.splice(userIndex, 1);
+  saveToLocalStorage(LS_USERS, users);
+
+  // Clean up related data
+  // 1. Subscription Requests
+  let subRequests = getSubscriptionRequests();
+  subRequests = subRequests.filter(req => req.userId !== userIdToDelete);
+  saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, subRequests);
+
+  // 2. PDF Assignments
+  let pdfs = getPdfDocuments();
+  pdfs.forEach(pdf => {
+    const assignmentIndex = pdf.assignedUserIds.indexOf(userIdToDelete);
+    if (assignmentIndex > -1) {
+      pdf.assignedUserIds.splice(assignmentIndex, 1);
+    }
+  });
+  saveToLocalStorage(LS_PDF_DOCUMENTS, pdfs);
+  
+  // 3. Global Notifications (remove user from readByUserIds)
+  let globalNotifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
+  globalNotifications.forEach(notification => {
+    const readIndex = notification.readByUserIds.indexOf(userIdToDelete);
+    if (readIndex > -1) {
+      notification.readByUserIds.splice(readIndex, 1);
+    }
+  });
+  saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, globalNotifications);
+
+
+  return true;
+};
+
 
 export const updateUserStats = (userId: string, stats: UserStats): User | undefined => {
   const user = getUserById(userId);
   if (user) {
     const updatedUser = { ...user, stats: { ...(user.stats || {}), ...stats } };
-    return updateUser(updatedUser, undefined); // currentUserId is undefined as this is self-update, not role change
+    // Pass undefined for currentUserId as this is self-update, not role change
+    return updateUser(updatedUser, undefined); 
   }
   return undefined;
 };
@@ -342,13 +446,13 @@ export const approveSubscription = (requestId: string, adminId: string, duration
       saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests);
       
       updateUser({ 
-        ...user, 
+        id: user.id, // ensure id is passed for updateUser
         subscriptionId: request.id, 
         activeSubscriptionPlanId: request.planId,
         subscriptionExpiry: expiryDate, 
         subscriptionStatus: SubscriptionStatus.ACTIVE,
         subscriptionNotes: `Subscription approved by ${adminId}. Expires on ${expiryDate}.`
-      });
+      }, adminId); // Pass adminId as currentUserId for context if needed
       return request;
     }
   }
@@ -367,7 +471,14 @@ export const rejectSubscription = (requestId: string, adminId: string, adminNote
 
     const user = getUserById(requests[requestIndex].userId);
     if (user) { 
-        updateUser({ ...user, subscriptionStatus: SubscriptionStatus.REJECTED, subscriptionId: undefined, activeSubscriptionPlanId: undefined, subscriptionExpiry: undefined, subscriptionNotes: `Subscription rejected by ${adminId}. Notes: ${adminNotes}` });
+        updateUser({ 
+            id: user.id, // ensure id is passed
+            subscriptionStatus: SubscriptionStatus.REJECTED, 
+            subscriptionId: undefined, 
+            activeSubscriptionPlanId: undefined, 
+            subscriptionExpiry: undefined, 
+            subscriptionNotes: `Subscription rejected by ${adminId}. Notes: ${adminNotes}` 
+        }, adminId); // Pass adminId for context
     }
     return requests[requestIndex];
   }
@@ -377,14 +488,14 @@ export const checkUserSubscriptionStatus = (userId: string): User | undefined =>
   const user = getUserById(userId);
   if (user && user.subscriptionId && user.subscriptionExpiry && user.subscriptionStatus === SubscriptionStatus.ACTIVE) {
     if (new Date(user.subscriptionExpiry) < new Date()) {
-      return updateUser({ ...user, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription expired." });
+      return updateUser({ id: user.id, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription expired." });
     }
     const planExists = getSubscriptionPlans().some(p => p.id === user.activeSubscriptionPlanId);
     if (!planExists) {
-        return updateUser({ ...user, subscriptionStatus: SubscriptionStatus.CANCELLED, activeSubscriptionPlanId: undefined, subscriptionNotes: "Active subscription plan no longer available."});
+        return updateUser({ id: user.id, subscriptionStatus: SubscriptionStatus.CANCELLED, activeSubscriptionPlanId: undefined, subscriptionNotes: "Active subscription plan no longer available."});
     }
   } else if (user && user.subscriptionStatus === SubscriptionStatus.ACTIVE && !user.subscriptionExpiry) {
-    return updateUser({ ...user, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription active but expiry date missing, marked as expired." });
+    return updateUser({ id: user.id, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription active but expiry date missing, marked as expired." });
   }
   return user;
 };
@@ -458,4 +569,52 @@ export const deletePdfDocument = (pdfId: string): boolean => {
 export const getPdfsForUser = (userId: string): PdfDocument[] => {
   const documents = getPdfDocuments();
   return documents.filter(doc => doc.assignedUserIds.includes(userId));
+};
+
+// Global Notifications Management
+export const addGlobalNotification = (message: string, siteManagerId: string): Notification => {
+  const notifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
+  const newNotification: Notification = {
+    id: `gnotify_${Date.now()}`,
+    message,
+    senderId: siteManagerId,
+    timestamp: new Date().toISOString(),
+    isGlobal: true,
+    readByUserIds: [], // Initially unread by all
+  };
+  notifications.unshift(newNotification); // Add to the beginning for newest first
+  saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, notifications);
+  return newNotification;
+};
+
+export const getGlobalNotificationsForUser = (userId: string): Notification[] => {
+  const allNotifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
+  return allNotifications.filter(n => !n.readByUserIds.includes(userId));
+};
+
+export const markGlobalNotificationAsReadForUser = (notificationId: string, userId: string): boolean => {
+  let notifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
+  const notificationIndex = notifications.findIndex(n => n.id === notificationId);
+  if (notificationIndex > -1) {
+    if (!notifications[notificationIndex].readByUserIds.includes(userId)) {
+      notifications[notificationIndex].readByUserIds.push(userId);
+      saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, notifications);
+      return true;
+    }
+  }
+  return false;
+};
+
+export const markAllGlobalNotificationsAsReadForUser = (userId: string): void => {
+  let notifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
+  let changed = false;
+  notifications.forEach(notification => {
+    if (!notification.readByUserIds.includes(userId)) {
+      notification.readByUserIds.push(userId);
+      changed = true;
+    }
+  });
+  if (changed) {
+    saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, notifications);
+  }
 };

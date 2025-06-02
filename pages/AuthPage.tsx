@@ -5,7 +5,7 @@ import { useAuth, useLocalization } from '../App';
 import { Button, Input, Card } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
 import { User, UserRole } from '../types';
-import { THEME_COLORS, ADMIN_EMAIL } from '../constants';
+import { THEME_COLORS, ADMIN_EMAIL, COUNTRIES_LIST } from '../constants';
 
 
 const AuthPage: React.FC = () => {
@@ -86,6 +86,7 @@ const RegisterForm: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [country, setCountry] = useState(COUNTRIES_LIST[0]?.code || ''); // Default to first country or empty
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -99,6 +100,17 @@ const RegisterForm: React.FC = () => {
     setError('');
     setSuccess('');
     setIsLoading(true);
+
+    if (!phoneNumber.trim()) {
+      setError(t('fieldRequired') + ` (${t('phoneNumber')})`);
+      setIsLoading(false);
+      return;
+    }
+    if (!country) {
+      setError(t('pleaseSelectCountry'));
+      setIsLoading(false);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError(t('passwordsDoNotMatch'));
@@ -117,6 +129,7 @@ const RegisterForm: React.FC = () => {
       password, // Store password temporarily, real app would hash it
       name,
       phoneNumber,
+      country,
       subscriptionStatus: undefined,
     };
     
@@ -124,7 +137,7 @@ const RegisterForm: React.FC = () => {
       // Role will be assigned by addUser based on email or default
       const registeredUser = DataService.addUser(newUserBase); 
       setSuccess(t('registrationSuccessful'));
-      setName(''); setEmail(''); setPassword(''); setConfirmPassword(''); setPhoneNumber('');
+      setName(''); setEmail(''); setPassword(''); setConfirmPassword(''); setPhoneNumber(''); setCountry(COUNTRIES_LIST[0]?.code || '');
     } catch (err: any) {
       setError(err.message || t('errorOccurred'));
     }
@@ -136,9 +149,27 @@ const RegisterForm: React.FC = () => {
     <form className="space-y-6" onSubmit={handleSubmit}>
       <Input id="name-register" label={t('name')} type="text" value={name} onChange={e => setName(e.target.value)} required autoComplete="name" />
       <Input id="email-register" label={t('email')} type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" />
-      <Input id="phone-register" label={t('phoneNumber') + ` (${t('optional')})`} type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} autoComplete="tel" />
+      
+      <div>
+        <label htmlFor="country-register" className={`block text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('country')}</label>
+        <select 
+          id="country-register" 
+          name="country" 
+          value={country} 
+          onChange={e => setCountry(e.target.value)} 
+          required
+          className={`block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} sm:text-sm text-white`}
+        >
+          {COUNTRIES_LIST.map(c => (
+            <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <Input id="phone-register" label={t('phoneNumber')} type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} required autoComplete="tel" />
       <Input id="password-register" label={t('password')} type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="new-password" />
       <Input id="confirm-password-register" label={t('confirmPassword')} type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required autoComplete="new-password" />
+      
       {error && <p className="text-sm text-red-400 text-center">{error}</p>}
       {success && <p className="text-sm text-green-400 text-center">{success}</p>}
       <Button type="submit" className="w-full" isLoading={isLoading}>{t('register')}</Button>

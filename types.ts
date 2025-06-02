@@ -11,6 +11,7 @@ export interface User {
   password?: string; // Only present during registration, not stored as plain text
   name: string;
   phoneNumber?: string; // Added phone number
+  country?: string; // Added country field
   role: UserRole;
   profileImage?: string;
   stats?: UserStats;
@@ -125,6 +126,16 @@ export interface PdfDocument {
   uploadedBy: string; // Admin user ID
   uploadDate: string; // ISO Date string
   assignedUserIds: string[]; // Array of user IDs this PDF is assigned to
+}
+
+// Global Notification Type
+export interface Notification {
+  id: string;
+  message: string;
+  senderId: string; // Site Manager's ID
+  timestamp: string; // ISO Date string
+  isGlobal: true; // True if sent to all users
+  readByUserIds: string[]; // Tracks which users have read/dismissed this notification
 }
 
 // Macronutrient Calculator Types REMOVED

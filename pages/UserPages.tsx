@@ -5,7 +5,7 @@ import { useAuth, useLocalization } from '../App';
 import { ProtectedRoute, Button, Input, Card, Spinner, Textarea } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
 import { UserStats, SubscriptionPlan, SubscriptionStatus, PdfDocument, SubscriptionPlanFeature, UserRole } from '../types';
-import { THEME_COLORS, ADMIN_EMAIL } from '../constants';
+import { THEME_COLORS, ADMIN_EMAIL, COUNTRIES_LIST } from '../constants';
 
 const UserPages: React.FC = () => {
   return (
@@ -214,7 +214,9 @@ const ProfilePage: React.FC = () => {
   const [name, setName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phoneNumber, setPhoneNumber] = useState(currentUser?.phoneNumber || '');
+  const [country, setCountry] = useState(currentUser?.country || '');
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   if (!currentUser) return <Spinner />;
@@ -223,23 +225,40 @@ const ProfilePage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setMessage('');
+    setError('');
+
+    if (!phoneNumber.trim()) {
+      setError(t('fieldRequired') + ` (${t('phoneNumber')})`);
+      setIsLoading(false);
+      return;
+    }
+     if (!country) {
+      setError(t('pleaseSelectCountry'));
+      setIsLoading(false);
+      return;
+    }
     
     const updatedUserDetails = { 
         ...currentUser, 
         name, 
         email, 
-        phoneNumber 
+        phoneNumber,
+        country
     };
     // Pass undefined for currentAdminId as this is a self-update, not a role change by admin
-    const updatedUser = DataService.updateUser(updatedUserDetails, undefined); 
-    if (updatedUser) {
-      setCurrentUser(updatedUser);
-      setMessage(t('profileUpdatedSuccess', 'تم تحديث الملف الشخصي بنجاح!'));
-    } else {
-      setMessage(t('errorOccurred'));
+    try {
+        const updatedUser = DataService.updateUser(updatedUserDetails, undefined); 
+        if (updatedUser) {
+          setCurrentUser(updatedUser);
+          setMessage(t('profileUpdatedSuccess', 'تم تحديث الملف الشخصي بنجاح!'));
+        } else {
+          setError(t('errorOccurred'));
+        }
+    } catch (err: any) {
+        setError(err.message || t('errorOccurred'));
     }
     setIsLoading(false);
-     setTimeout(() => setMessage(''), 3000);
+     setTimeout(() => {setMessage(''); setError('');}, 3000);
   };
 
   return (
@@ -251,8 +270,24 @@ const ProfilePage: React.FC = () => {
           <Input label={t('email')} id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required 
                  disabled={currentUser.email === ADMIN_EMAIL} // Site Manager cannot change their email
           />
-          <Input label={t('phoneNumber') + ` (${t('optional')})`} id="phoneNumber" type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
-          {message && <p className={`text-sm ${message.includes('نجاح') ? 'text-green-400' : 'text-red-400'}`}>{message}</p>}
+          <div>
+            <label htmlFor="country-profile" className={`block text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('country')}</label>
+            <select 
+                id="country-profile" 
+                name="country" 
+                value={country} 
+                onChange={e => setCountry(e.target.value)} 
+                required
+                className={`block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} sm:text-sm text-white`}
+            >
+                {COUNTRIES_LIST.map(c => (
+                    <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option>
+                ))}
+            </select>
+          </div>
+          <Input label={t('phoneNumber')} id="phoneNumber" type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} required />
+          {message && <p className="text-sm text-green-400">{message}</p>}
+          {error && <p className="text-sm text-red-400">{error}</p>}
           <Button type="submit" isLoading={isLoading}>{t('saveChanges')}</Button>
         </form>
       </Card>

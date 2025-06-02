@@ -5,58 +5,73 @@ import { useAuth, useLocalization } from '../App';
 import { Button, Input, Card, Spinner, Modal, Textarea } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
 import { User, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserRole, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature } from '../types';
-import { THEME_COLORS, ADMIN_EMAIL, PDF_MAX_SIZE_BYTES } from '../constants';
+import { THEME_COLORS, ADMIN_EMAIL, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST } from '../constants';
 
 enum AdminSection {
   Users = "users",
   Videos = "videos",
   Recipes = "recipes",
-  Pdfs = "pdfs", // New section for PDF management
+  Pdfs = "pdfs", 
   Subscriptions = "subscriptions",
   SubscriptionPlans = "subscription_plans",
+  GlobalNotifications = "global_notifications", // New section
 }
 
 const AdminPage: React.FC = () => {
   const { t } = useLocalization();
-  const { currentUser } = useAuth();
+  const { currentUser, isSiteManager } = useAuth(); 
   const [activeSection, setActiveSection] = useState<AdminSection>(AdminSection.Subscriptions);
 
   if (!currentUser || (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SITE_MANAGER)) {
     return <p>{t('adminAccessOnly')}</p>; 
   }
 
-  const NavItem: React.FC<{ section: AdminSection; label: string }> = ({ section, label }) => (
+  const NavItem: React.FC<{ section: AdminSection; label: string; icon?: JSX.Element }> = ({ section, label, icon }) => (
     <button
       onClick={() => setActiveSection(section)}
-      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors w-full text-right
-        ${activeSection === section ? `bg-${THEME_COLORS.primary} text-white` : `text-gray-300 hover:bg-gray-700 hover:text-white`}`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out transform hover:scale-105 w-full text-right rtl:text-left
+        ${activeSection === section ? `bg-${THEME_COLORS.primary} text-white shadow-lg` : `text-slate-300 hover:bg-slate-700 hover:text-white`}`}
     >
+      {icon}
       {label}
     </button>
   );
   
+  const NavIcons = {
+    subscriptions: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M3.25 4A2.25 2.25 0 001 6.25v7.5A2.25 2.25 0 003.25 16h13.5A2.25 2.25 0 0019 13.75v-7.5A2.25 2.25 0 0016.75 4H3.25zM10 6.5a.75.75 0 01.75.75v2a.75.75 0 01-1.5 0v-2A.75.75 0 0110 6.5zM10 12a1 1 0 100-2 1 1 0 000 2z" /><path d="M5.992 8.332a.75.75 0 011.06-.008L9.25 10.511l2.205-2.195a.75.75 0 011.052 1.07l-2.75 2.727a.75.75 0 01-1.062 0L5.984 9.394a.75.75 0 01.008-1.062z" /></svg>,
+    plans: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M10 3.75a2.25 2.25 0 00-2.25 2.25v9.75a.75.75 0 001.5 0V6A.75.75 0 0110 5.25h1.5a.75.75 0 01.75.75v3.75a.75.75 0 001.5 0V6A2.25 2.25 0 0010.75 3.75H10z" /><path d="M15.25 4.313A2.25 2.25 0 0117.5 6.563v3.187a.75.75 0 01-1.5 0V6.563a.75.75 0 00-.75-.75h-.75a.75.75 0 010-1.5h.75zM3.5 8.75A.75.75 0 014.25 8H5a.75.75 0 000-1.5H4.25A2.25 2.25 0 002 8.75v6.5A2.25 2.25 0 004.25 17.5h11.5A2.25 2.25 0 0018 15.25V12a.75.75 0 011.5 0v3.25A3.75 3.75 0 0115.75 19H4.25A3.75 3.75 0 01.5 15.25v-6.5A3.75 3.75 0 014.25 5H5a2.25 2.25 0 012.25 2.25v1.5A.75.75 0 016.5 9.5h-3a.75.75 0 01-.75-.75z" /></svg>,
+    users: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.25 1.25 0 002.411-1.336C5.103 11.85 6.897 10.5 9.25 10.5h1.5c2.353 0 4.147 1.35 4.374 2.657a1.25 1.25 0 002.411 1.336A7.001 7.001 0 0010.75 12h-1.5a7.001 7.001 0 00-5.785 2.493z" /></svg>,
+    pdfs: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm5.75 2.75a.75.75 0 01.75.75v2a.75.75 0 01-1.5 0V5.5a.75.75 0 01.75-.75zm-3.5.75a.75.75 0 000 1.5h.5a.75.75 0 000-1.5h-.5zM9 10.5a.75.75 0 01.75-.75h.5a.75.75 0 010 1.5H9.75A.75.75 0 019 10.5zm5.25 2.25a.75.75 0 00-1.5 0v.25a.75.75 0 001.5 0v-.25zM7.5 12.75a.75.75 0 01.75-.75h.5a.75.75 0 010 1.5H8.25A.75.75 0 017.5 12.75z" clipRule="evenodd" /></svg>,
+    videos: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M3.5 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0v- dificultades.75A2.25 2.25 0 015.75 16h8.5A2.25 2.25 0 0116.5 13.75V6.25A2.25 2.25 0 0114.25 4h-8.5A2.25 2.25 0 013.5 6.25V2.75zM6.5 5A.5.5 0 017 4.5h6a.5.5 0 01.5.5v10a.5.5 0 01-.5.5H7a.5.5 0 01-.5-.5V5z" /><path d="M9.027 7.532a.5.5 0 01.746-.43l3.002 1.716a.5.5 0 010 .859l-3.002 1.716a.5.5 0 01-.746-.43V7.532z" /></svg>,
+    recipes: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M10 1a2.5 2.5 0 00-2.5 2.5V8a.5.5 0 00.5.5h4a.5.5 0 00.5-.5V3.5A2.5 2.5 0 0010 1zM8.5 3.5a1 1 0 011-1h1a1 1 0 011 1V4h-3V3.5z" /><path d="M10.22 8.906a1.502 1.502 0 00-.44 0C9.346 8.906 9 9.252 9 9.69V14.5a.5.5 0 00.5.5h1a.5.5 0 00.5-.5V9.69c0-.438-.346-.784-.78-.784z" /><path fillRule="evenodd" d="M15.5 10.25a.75.75 0 00-.75-.75H5.25a.75.75 0 000 1.5h3.12V14.5A1.5 1.5 0 009.87 16h.26a1.5 1.5 0 001.495-1.5V11h3.125a.75.75 0 00.75-.75zM10 11.5a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>,
+    notifications: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" /></svg>,
+  };
+
   return (
-    <div className="flex flex-col md:flex-row gap-6 min-h-[calc(100vh-12rem)]">
-      <aside className="md:w-72 bg-gray-800 p-4 rounded-lg space-y-2 self-start">
-        <h2 className="text-xl font-semibold text-white mb-4">{t('adminNavigation', 'لوحة التحكم')}</h2>
-        <NavItem section={AdminSection.Subscriptions} label={t('approveSubscriptions')} />
-        <NavItem section={AdminSection.SubscriptionPlans} label={t('manageSubscriptionPlans')} />
-        {currentUser.role === UserRole.SITE_MANAGER && ( // Only Site Manager sees User Management for role changes
-            <NavItem section={AdminSection.Users} label={t('manageUsers')} />
+    <div className="flex flex-col md:flex-row gap-6 lg:gap-8 min-h-[calc(100vh-12rem)]">
+      <aside className={`md:w-72 bg-${THEME_COLORS.surface} p-5 rounded-xl shadow-2xl space-y-3 self-start sticky top-24`}>
+        <h2 className="text-xl font-bold text-white mb-4 border-b border-slate-700 pb-3">{t('adminNavigation', 'لوحة التحكم')}</h2>
+        <NavItem section={AdminSection.Subscriptions} label={t('approveSubscriptions')} icon={NavIcons.subscriptions} />
+        <NavItem section={AdminSection.SubscriptionPlans} label={t('manageSubscriptionPlans')} icon={NavIcons.plans} />
+        {isSiteManager && ( 
+            <NavItem section={AdminSection.Users} label={t('manageUsers')} icon={NavIcons.users} />
         )}
-         {/* All admins can manage content */}
-        <NavItem section={AdminSection.Pdfs} label={t('managePdfs')} />
-        <NavItem section={AdminSection.Videos} label={t('manageVideos')} />
-        <NavItem section={AdminSection.Recipes} label={t('manageRecipes')} />
+        <NavItem section={AdminSection.Pdfs} label={t('managePdfs')} icon={NavIcons.pdfs} />
+        <NavItem section={AdminSection.Videos} label={t('manageVideos')} icon={NavIcons.videos} />
+        <NavItem section={AdminSection.Recipes} label={t('manageRecipes')} icon={NavIcons.recipes} />
+        {isSiteManager && (
+            <NavItem section={AdminSection.GlobalNotifications} label={t('globalNotifications')} icon={NavIcons.notifications} />
+        )}
       </aside>
       <main className="flex-grow">
-        <Card className="p-6 min-h-full">
-            {activeSection === AdminSection.Users && currentUser.role === UserRole.SITE_MANAGER && <ManageUsersSection />}
+        <Card className="p-6 sm:p-8 min-h-full shadow-2xl">
+            {activeSection === AdminSection.Users && isSiteManager && <ManageUsersSection />}
             {activeSection === AdminSection.Videos && <ManageVideosSection />}
             {activeSection === AdminSection.Recipes && <ManageRecipesSection />}
             {activeSection === AdminSection.Pdfs && <ManagePdfsSection />}
             {activeSection === AdminSection.Subscriptions && <ApproveSubscriptionsSection />}
             {activeSection === AdminSection.SubscriptionPlans && <ManageSubscriptionPlansSection />}
+            {activeSection === AdminSection.GlobalNotifications && isSiteManager && <SendGlobalNotificationSection />}
         </Card>
       </main>
     </div>
@@ -68,66 +83,131 @@ const AdminPage: React.FC = () => {
 
 const ManageUsersSection: React.FC = () => {
   const { t } = useLocalization();
-  const { currentUser } = useAuth(); // This is the logged-in admin/site manager
+  const { currentUser, isSiteManager } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionUser, setActionUser] = useState<User | null>(null);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'promote' | 'demote' | null>(null);
+  
+  const [userForRoleChange, setUserForRoleChange] = useState<User | null>(null);
+  const [isRoleConfirmModalOpen, setIsRoleConfirmModalOpen] = useState(false);
+  const [roleConfirmAction, setRoleConfirmAction] = useState<'promote' | 'demote' | null>(null);
+  
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+
   const [feedback, setFeedback] = useState({type: '', message: ''});
 
+  const fetchUsers = () => {
+    setUsers(DataService.getUsers());
+  }
 
   useEffect(() => {
-    setUsers(DataService.getUsers());
+    fetchUsers();
     setLoading(false);
   }, []);
-
-  const handleRoleChange = (userToUpdate: User, newRole: UserRole) => {
-    if (!currentUser || currentUser.role !== UserRole.SITE_MANAGER) {
-        setFeedback({type: 'error', message: t('actionNotAllowed')});
-        return;
+  
+  const showFeedback = (type: 'success' | 'error', messageKey: string, interpolateParams?: Record<string, string>) => {
+    let message = t(messageKey);
+    if (interpolateParams) {
+        Object.keys(interpolateParams).forEach(key => {
+            message = message.replace(`{${key}}`, interpolateParams[key]);
+        });
     }
-    // Prevent Site Manager from demoting themselves
-    if (userToUpdate.email === ADMIN_EMAIL && newRole !== UserRole.SITE_MANAGER) {
-        setFeedback({type: 'error', message: t('cannotDemoteSelf')});
-        setIsConfirmModalOpen(false);
-        setActionUser(null);
-        setConfirmAction(null);
-        setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
-        return;
-    }
-
-    try {
-      DataService.updateUser({ ...userToUpdate, role: newRole }, currentUser.id);
-      setUsers(DataService.getUsers()); // Refresh users list
-      setFeedback({type: 'success', message: t('roleUpdatedSuccess')});
-    } catch (error: any) {
-      console.error("Error updating role:", error);
-      setFeedback({type: 'error', message: error.message || t('errorOccurred')});
-    }
-    setIsConfirmModalOpen(false);
-    setActionUser(null);
-    setConfirmAction(null);
-     setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+    setFeedback({type, message});
+    setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
   };
 
-  const openConfirmModal = (user: User, action: 'promote' | 'demote') => {
-    if (user.email === ADMIN_EMAIL && action === 'demote') {
-      setFeedback({type: 'error', message: t('cannotDemoteSelf')});
-      setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+  // Role Change Handlers
+  const handleRoleChange = () => {
+    if (!currentUser || !isSiteManager || !userForRoleChange || !roleConfirmAction) return;
+
+    if (userForRoleChange.email === ADMIN_EMAIL && roleConfirmAction === 'demote') {
+      showFeedback('error', 'cannotDemoteSelf');
+      closeRoleConfirmModal();
       return;
     }
-    // Prevent promoting ADMIN to SITE_MANAGER or demoting SITE_MANAGER via this flow
+    const newRole = roleConfirmAction === 'promote' ? UserRole.ADMIN : UserRole.USER;
+    try {
+      DataService.updateUser({ ...userForRoleChange, role: newRole }, currentUser.id);
+      fetchUsers();
+      showFeedback('success', 'roleUpdatedSuccess');
+    } catch (error: any) {
+      showFeedback('error', error.message || 'errorOccurred');
+    }
+    closeRoleConfirmModal();
+  };
+
+  const openRoleConfirmModal = (user: User, action: 'promote' | 'demote') => {
+    if (user.email === ADMIN_EMAIL && action === 'demote') {
+      showFeedback('error', 'cannotDemoteSelf');
+      return;
+    }
     if ((action === 'promote' && user.role === UserRole.ADMIN) || 
         (user.role === UserRole.SITE_MANAGER && action === 'demote')) {
-        setFeedback({type: 'error', message: t('actionNotAllowed')});
-        setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+      showFeedback('error', 'actionNotAllowed');
+      return;
+    }
+    setUserForRoleChange(user);
+    setRoleConfirmAction(action);
+    setIsRoleConfirmModalOpen(true);
+  };
+  const closeRoleConfirmModal = () => {
+    setIsRoleConfirmModalOpen(false);
+    setUserForRoleChange(null);
+    setRoleConfirmAction(null);
+  };
+
+  // Edit User Info Handlers
+  const openEditUserModal = (user: User) => {
+    if (user.id === currentUser?.id) {
+        showFeedback('error', 'cannotEditSelfDetailsInThisModal');
         return;
     }
+    setUserToEdit(user);
+    setIsEditUserModalOpen(true);
+  };
+  const closeEditUserModal = () => {
+    setIsEditUserModalOpen(false);
+    setUserToEdit(null);
+  };
+  const handleSaveUserInfo = (updatedUserData: Partial<User>) => {
+    if (!currentUser || !isSiteManager || !userToEdit) return;
+    try {
+        DataService.updateUser({ ...userToEdit, ...updatedUserData, id: userToEdit.id }, currentUser.id);
+        fetchUsers();
+        showFeedback('success', 'userInfoUpdatedSuccess');
+        closeEditUserModal();
+    } catch (error: any) {
+        showFeedback('error', error.message || 'errorOccurred');
+        // Keep modal open if error
+    }
+  };
 
-    setActionUser(user);
-    setConfirmAction(action);
-    setIsConfirmModalOpen(true);
+  // Delete User Handlers
+  const openDeleteUserModal = (user: User) => {
+    if (user.id === currentUser?.id) {
+        showFeedback('error', 'cannotDeleteSelfAccount');
+        return;
+    }
+    setUserToDelete(user);
+    setIsDeleteUserModalOpen(true);
+  };
+  const closeDeleteUserModal = () => {
+    setIsDeleteUserModalOpen(false);
+    setUserToDelete(null);
+  };
+  const handleConfirmDeleteUser = () => {
+    if (!currentUser || !isSiteManager || !userToDelete) return;
+    try {
+      DataService.deleteUser(userToDelete.id, currentUser.id);
+      fetchUsers();
+      showFeedback('success', 'userDeletedSuccess');
+    } catch (error: any) {
+      showFeedback('error', error.message || 'errorOccurred');
+    }
+    closeDeleteUserModal();
   };
 
   const getRoleText = (role: UserRole) => {
@@ -135,58 +215,74 @@ const ManageUsersSection: React.FC = () => {
     if (role === UserRole.ADMIN) return t('adminPanel'); // "Admin"
     return t('user'); // "User"
   }
-
+  
+  const getCountryName = (countryCode?: string) => {
+    if (!countryCode) return 'N/A';
+    const country = COUNTRIES_LIST.find(c => c.code === countryCode);
+    return country ? country.name : countryCode;
+  };
 
   if (loading) return <Spinner />;
-  if (currentUser?.role !== UserRole.SITE_MANAGER) {
-      return <p>{t('adminAccessOnly')}</p>; // Should not happen due to parent check, but good fallback
+  if (!isSiteManager) {
+      return <p>{t('adminAccessOnly')}</p>;
   }
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold text-white mb-4">{t('manageUsers')}</h2>
-      {feedback.message && <p className={`mb-4 p-2 rounded text-sm ${feedback.type === 'success' ? 'bg-green-700 text-green-100' : 'bg-red-700 text-red-100'}`}>{feedback.message}</p>}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-gray-700">
+      <h2 className="text-2xl font-semibold text-white mb-6">{t('manageUsers')}</h2>
+      {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
+      <div className="overflow-x-auto rounded-lg shadow-md">
+        <table className="min-w-full divide-y divide-slate-700">
+          <thead className={`bg-${THEME_COLORS.surface} bg-opacity-50`}>
             <tr>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('name')}</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('email')}</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('phoneNumber')}</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('role', 'الدور')}</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('subscriptionStatus', 'حالة الاشتراك')}</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">{t('actions')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">{t('name')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">{t('email')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">{t('phoneNumber')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">{t('country')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">{t('role', 'الدور')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">{t('subscriptionStatus', 'حالة الاشتراك')}</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">{t('actions')}</th>
             </tr>
           </thead>
-          <tbody className="bg-gray-800 divide-y divide-gray-700">
+          <tbody className={`bg-${THEME_COLORS.surface} divide-y divide-slate-700`}>
             {users.map(user => {
               const isTargetSiteManager = user.email === ADMIN_EMAIL && user.role === UserRole.SITE_MANAGER;
+              const isSelf = user.id === currentUser?.id;
               return (
-                <tr key={user.id}>
+                <tr key={user.id} className="hover:bg-slate-700 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{user.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.phoneNumber || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{getRoleText(user.role)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{user.phoneNumber || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{getCountryName(user.country)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{getRoleText(user.role)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.subscriptionStatus === SubscriptionStatus.ACTIVE ? `bg-green-100 text-green-800` :
-                        user.subscriptionStatus === SubscriptionStatus.PENDING ? `bg-yellow-100 text-yellow-800` :
-                        user.subscriptionStatus === SubscriptionStatus.EXPIRED ? `bg-red-100 text-red-800` :
-                        user.subscriptionStatus === SubscriptionStatus.REJECTED ? `bg-red-200 text-red-900` :
-                        user.subscriptionStatus === SubscriptionStatus.CANCELLED ? `bg-gray-100 text-gray-800` :
-                        `bg-gray-200 text-gray-800`}`}>
+                    <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.subscriptionStatus === SubscriptionStatus.ACTIVE ? `bg-green-500 bg-opacity-20 text-green-300` :
+                        user.subscriptionStatus === SubscriptionStatus.PENDING ? `bg-yellow-500 bg-opacity-20 text-yellow-300` :
+                        user.subscriptionStatus === SubscriptionStatus.EXPIRED ? `bg-red-500 bg-opacity-20 text-red-300` :
+                        user.subscriptionStatus === SubscriptionStatus.REJECTED ? `bg-red-600 bg-opacity-20 text-red-200` :
+                        user.subscriptionStatus === SubscriptionStatus.CANCELLED ? `bg-slate-500 bg-opacity-20 text-slate-300` :
+                        `bg-slate-600 bg-opacity-20 text-slate-300`}`}>
                       {user.subscriptionStatus ? t(user.subscriptionStatus.toLowerCase(), user.subscriptionStatus) : t('notSubscribedYet', 'لم يشترك بعد')}
                     </span>
                   </td>
-                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                     {currentUser?.role === UserRole.SITE_MANAGER && !isTargetSiteManager && (
-                       user.role === UserRole.USER ? (
-                         <Button onClick={() => openConfirmModal(user, 'promote')} size="sm" variant="secondary">{t('promoteToAdmin')}</Button>
-                       ) : user.role === UserRole.ADMIN ? ( // Only SITE_MANAGER can demote ADMIN
-                         <Button onClick={() => openConfirmModal(user, 'demote')} size="sm" variant="danger">{t('demoteToUser')}</Button>
-                       ) : null
+                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2 rtl:space-x-reverse">
+                     {isSiteManager && !isSelf && (
+                        <>
+                            <Button onClick={() => openEditUserModal(user)} size="sm" variant="ghost">{t('editUserInfo')}</Button>
+                            {user.role === UserRole.USER && (
+                                <Button onClick={() => openRoleConfirmModal(user, 'promote')} size="sm" variant="secondary">{t('promoteToAdmin')}</Button>
+                            )}
+                            {user.role === UserRole.ADMIN && (
+                                <Button onClick={() => openRoleConfirmModal(user, 'demote')} size="sm" variant="danger">{t('demoteToUser')}</Button>
+                            )}
+                            {!isTargetSiteManager && ( // Cannot delete the designated site manager
+                                <Button onClick={() => openDeleteUserModal(user)} size="sm" variant="danger">{t('deleteUser')}</Button>
+                            )}
+                        </>
                      )}
-                     {isTargetSiteManager && <span className="text-xs text-gray-500">{t('cannotModifySiteManager')}</span>}
+                     {isTargetSiteManager && <span className="text-xs text-slate-500">{t('cannotModifySiteManager')}</span>}
+                     {isSelf && <span className="text-xs text-slate-500">{t('cannotEditSelfDetailsInThisModal')}</span>}
                    </td>
                 </tr>
               );
@@ -194,29 +290,150 @@ const ManageUsersSection: React.FC = () => {
           </tbody>
         </table>
       </div>
-      {isConfirmModalOpen && actionUser && confirmAction && (
+      {/* Role Change Modal */}
+      {isRoleConfirmModalOpen && userForRoleChange && roleConfirmAction && (
         <Modal
-          isOpen={isConfirmModalOpen}
-          onClose={() => setIsConfirmModalOpen(false)}
+          isOpen={isRoleConfirmModalOpen}
+          onClose={closeRoleConfirmModal}
           title={t('confirm', 'تأكيد الإجراء')}
         >
-          <p className="text-gray-300 mb-4">
-            {confirmAction === 'promote' ? t('confirmPromotion') : t('confirmDemotion')}
-            <strong className="mx-1">{actionUser.name} ({actionUser.email})</strong>?
+          <p className="text-slate-300 mb-6">
+            {roleConfirmAction === 'promote' ? t('confirmPromotion') : t('confirmDemotion')}
+            <strong className="mx-1">{userForRoleChange.name} ({userForRoleChange.email})</strong>?
           </p>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setIsConfirmModalOpen(false)}>{t('cancel')}</Button>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={closeRoleConfirmModal}>{t('cancel')}</Button>
             <Button
-              variant={confirmAction === 'promote' ? 'primary' : 'danger'}
-              onClick={() => handleRoleChange(actionUser, confirmAction === 'promote' ? UserRole.ADMIN : UserRole.USER)}
+              variant={roleConfirmAction === 'promote' ? 'primary' : 'danger'}
+              onClick={handleRoleChange}
             >
               {t('confirm')}
             </Button>
           </div>
         </Modal>
       )}
+      {/* Edit User Info Modal */}
+      {isEditUserModalOpen && userToEdit && (
+        <EditUserInfoModal
+            isOpen={isEditUserModalOpen}
+            onClose={closeEditUserModal}
+            userToEdit={userToEdit}
+            onSave={handleSaveUserInfo}
+            t={t}
+        />
+      )}
+      {/* Delete User Modal */}
+      {isDeleteUserModalOpen && userToDelete && (
+        <Modal
+          isOpen={isDeleteUserModalOpen}
+          onClose={closeDeleteUserModal}
+          title={t('deleteUser')}
+        >
+          <p className="text-slate-300 mb-6">
+            {t('confirmDeleteUser', 'هل أنت متأكد أنك تريد حذف المستخدم {userName}؟').replace('{userName}', userToDelete.name)}
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={closeDeleteUserModal}>{t('cancel')}</Button>
+            <Button variant="danger" onClick={handleConfirmDeleteUser}>{t('confirm')}</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
+};
+
+interface EditUserInfoModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    userToEdit: User;
+    onSave: (updatedData: Partial<User>) => void;
+    t: (key: string, subkey?: string) => string;
+}
+
+const EditUserInfoModal: React.FC<EditUserInfoModalProps> = ({ isOpen, onClose, userToEdit, onSave, t}) => {
+    const [name, setName] = useState(userToEdit.name);
+    const [email, setEmail] = useState(userToEdit.email);
+    const [phoneNumber, setPhoneNumber] = useState(userToEdit.phoneNumber || '');
+    const [country, setCountry] = useState(userToEdit.country || '');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [modalError, setModalError] = useState('');
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        setModalError('');
+
+        if (!phoneNumber.trim()) {
+            setModalError(t('fieldRequired') + ` (${t('phoneNumber')})`);
+            return;
+        }
+        if (!country) {
+            setModalError(t('pleaseSelectCountry'));
+            return;
+        }
+
+        if (newPassword && newPassword !== confirmNewPassword) {
+            setModalError(t('passwordsDoNotMatch'));
+            return;
+        }
+        if (email !== userToEdit.email && window.confirm(t('confirmEmailChange'))) {
+            // Proceed with email change
+        } else if (email !== userToEdit.email) {
+            // User cancelled email change prompt
+            return;
+        }
+        
+        const updatedData: Partial<User> = { name, email, phoneNumber, country };
+        if (newPassword) {
+            updatedData.password = newPassword; // Send new password if provided
+        }
+        onSave(updatedData);
+    };
+    
+    useEffect(() => {
+        setName(userToEdit.name);
+        setEmail(userToEdit.email);
+        setPhoneNumber(userToEdit.phoneNumber || '');
+        setCountry(userToEdit.country || '');
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setModalError('');
+    }, [userToEdit]);
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={t('editUserInfo')} size="lg">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <Input label={t('name')} value={name} onChange={e => setName(e.target.value)} required />
+                <Input label={t('email')} type="email" value={email} onChange={e => setEmail(e.target.value)} required 
+                       disabled={userToEdit.email === ADMIN_EMAIL} // Cannot change primary site manager's email
+                />
+                <div>
+                    <label htmlFor="country-edit" className={`block text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('country')}</label>
+                    <select 
+                        id="country-edit" 
+                        name="country" 
+                        value={country} 
+                        onChange={e => setCountry(e.target.value)} 
+                        required
+                        className={`block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} sm:text-sm text-white`}
+                        >
+                        {COUNTRIES_LIST.map(c => (
+                            <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <Input label={t('phoneNumber')} type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} required/>
+                <Input label={t('newPassword') + ` (${t('optional')})`} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="اترك الحقل فارغًا لعدم التغيير" />
+                <Input label={t('confirmNewPassword') + ` (${t('optional')})`} type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} disabled={!newPassword} />
+                
+                {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+                <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-700">
+                    <Button type="button" variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+                    <Button type="submit">{t('saveChanges')}</Button>
+                </div>
+            </form>
+        </Modal>
+    );
 };
 
 
@@ -267,18 +484,26 @@ const ManageVideosSection: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-white">{t('manageVideos')}</h2>
-        <Button onClick={openModalForAdd}>{t('addVideo')}</Button>
+        <Button onClick={openModalForAdd} variant="primary">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 me-2">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+          {t('addVideo')}
+        </Button>
       </div>
-      {videos.length === 0 && <p className="text-gray-400 text-center">{t('noVideosFound')}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {videos.length === 0 && <p className="text-slate-400 text-center py-8">{t('noVideosFound')}</p>}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {videos.map(video => (
-          <Card key={video.id} className="p-4">
-            <img src={video.thumbnailUrl || `https://picsum.photos/seed/${video.id}/300/180`} alt={video.title} className="w-full h-40 object-cover rounded mb-2"/>
-            <h3 className="text-lg font-semibold text-emerald-400">{video.title}</h3>
-            <p className="text-sm text-gray-300 truncate">{video.description}</p>
-            <div className="mt-3 flex gap-2">
+          <Card key={video.id} className="p-4 flex flex-col">
+            <img src={video.thumbnailUrl || `https://picsum.photos/seed/${video.id}/300/180`} alt={video.title} className="w-full h-40 object-cover rounded-lg mb-3 shadow-md"/>
+            <h3 className={`text-lg font-semibold text-${THEME_COLORS.primary}`}>{video.title}</h3>
+            <p className="text-sm text-slate-300 my-1 flex-grow">{video.description.substring(0, 80)}{video.description.length > 80 && '...'}</p>
+            <div className="text-xs text-slate-400 mt-2">
+                <span>{t('category')}: {t(video.category.toLowerCase(), video.category)}</span> | <span>{t('duration')}: {video.durationMinutes} {t('minutes')}</span>
+            </div>
+            <div className="mt-4 flex gap-2 border-t border-slate-700 pt-3">
                 <Button onClick={() => openModalForEdit(video)} size="sm" variant="secondary">{t('edit')}</Button>
                 <Button onClick={() => handleDelete(video.id)} size="sm" variant="danger">{t('delete')}</Button>
             </div>
@@ -332,11 +557,11 @@ const VideoFormModal: React.FC<VideoFormModalProps> = ({ isOpen, onClose, videoD
                 <Input label={t('videoDuration')} name="durationMinutes" type="number" value={formData.durationMinutes || ''} onChange={handleChange} required />
                 <div>
                     <label htmlFor="category" className={`block text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('videoCategory')}</label>
-                    <select id="category" name="category" value={formData.category || 'Cardio'} onChange={handleChange} className={`w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2.5`}>
+                    <select id="category" name="category" value={formData.category || 'Cardio'} onChange={handleChange} className={`w-full bg-slate-700 border border-slate-600 text-white text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2.5`}>
                         {videoCategories.map(cat => <option key={cat} value={cat}>{t(cat.toLowerCase(), cat)}</option>)}
                     </select>
                 </div>
-                <div className="flex justify-end gap-2 pt-4">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-700 mt-2">
                     <Button type="button" variant="ghost" onClick={onClose}>{t('cancel')}</Button>
                     <Button type="submit">{t('saveChanges')}</Button>
                 </div>
@@ -392,18 +617,26 @@ const ManageRecipesSection: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-white">{t('manageRecipes')}</h2>
-        <Button onClick={openModalForAdd}>{t('addRecipe')}</Button>
+         <Button onClick={openModalForAdd} variant="primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 me-2">
+             <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+            {t('addRecipe')}
+        </Button>
       </div>
-      {recipes.length === 0 && <p className="text-gray-400 text-center">{t('noRecipesFound')}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {recipes.length === 0 && <p className="text-slate-400 text-center py-8">{t('noRecipesFound')}</p>}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {recipes.map(recipe => (
-          <Card key={recipe.id} className="p-4">
-            <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.id}/300/200`} alt={recipe.name} className="w-full h-40 object-cover rounded mb-2"/>
-            <h3 className="text-lg font-semibold text-emerald-400">{recipe.name}</h3>
-            <p className="text-sm text-gray-300 truncate">{recipe.description}</p>
-             <div className="mt-3 flex gap-2">
+          <Card key={recipe.id} className="p-4 flex flex-col">
+            <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.id}/300/200`} alt={recipe.name} className="w-full h-40 object-cover rounded-lg mb-3 shadow-md"/>
+            <h3 className={`text-lg font-semibold text-${THEME_COLORS.primary}`}>{recipe.name}</h3>
+            <p className="text-sm text-slate-300 my-1 flex-grow">{recipe.description.substring(0, 80)}{recipe.description.length > 80 && '...'}</p>
+             <div className="text-xs text-slate-400 mt-2">
+                <span>{t('category')}: {t(recipe.category.toLowerCase(), recipe.category)}</span> | <span>{t('servings')}: {recipe.servings}</span>
+            </div>
+             <div className="mt-4 flex gap-2 border-t border-slate-700 pt-3">
                 <Button onClick={() => openModalForEdit(recipe)} size="sm" variant="secondary">{t('edit')}</Button>
                 <Button onClick={() => handleDelete(recipe.id)} size="sm" variant="danger">{t('delete')}</Button>
             </div>
@@ -503,12 +736,12 @@ const RecipeFormModal: React.FC<RecipeFormModalProps> = ({ isOpen, onClose, reci
                 </div>
                  <div>
                     <label htmlFor="recipeCategory" className={`block text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('recipeCategory')}</label>
-                    <select id="recipeCategory" name="category" value={formData.category || 'Breakfast'} onChange={handleChange} className={`w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2.5`}>
+                    <select id="recipeCategory" name="category" value={formData.category || 'Breakfast'} onChange={handleChange} className={`w-full bg-slate-700 border border-slate-600 text-white text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2.5`}>
                         {recipeCategories.map(cat => <option key={cat} value={cat}>{t(cat.toLowerCase(), cat)}</option>)}
                     </select>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4">
+                <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-700">
                     <Button type="button" variant="ghost" onClick={onClose}>{t('cancel')}</Button>
                     <Button type="submit">{t('saveChanges')}</Button>
                 </div>
@@ -595,26 +828,31 @@ const ManagePdfsSection: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-white">{t('managePdfs')}</h2>
-        <Button onClick={openModalForAdd} isLoading={loading && isModalOpen}>{t('uploadPdf')}</Button>
+        <Button onClick={openModalForAdd} isLoading={loading && isModalOpen} variant="primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 me-2">
+                <path d="M9.25 3.25a.75.75 0 00-1.5 0v3.5h-3.5a.75.75 0 000 1.5h3.5v3.5a.75.75 0 001.5 0v-3.5h3.5a.75.75 0 000-1.5h-3.5v-3.5z" />
+            </svg>
+            {t('uploadPdf')}
+        </Button>
       </div>
-      {feedback.message && <p className={`mb-4 p-2 rounded text-sm ${feedback.type === 'success' ? 'bg-green-700 text-green-100' : 'bg-red-700 text-red-100'}`}>{feedback.message}</p>}
+      {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
       
-      {pdfs.length === 0 && <p className="text-gray-400 text-center">{t('noPdfsUploaded')}</p>}
+      {pdfs.length === 0 && <p className="text-slate-400 text-center py-8">{t('noPdfsUploaded')}</p>}
       <div className="space-y-4">
         {pdfs.map(pdf => (
-          <Card key={pdf.id} className="p-4">
+          <Card key={pdf.id} className="p-4 hover:border-sky-500">
             <div className="flex flex-col md:flex-row justify-between md:items-start">
                 <div className="flex-grow">
                     <h3 className={`text-xl font-semibold text-${THEME_COLORS.primary}`}>{pdf.fileName}</h3>
-                    <p className="text-sm text-gray-300 mt-1">{pdf.description}</p>
-                    <p className="text-xs text-gray-400 mt-1">{t('uploadDate')}: {new Date(pdf.uploadDate).toLocaleDateString('ar-EG')}</p>
+                    <p className="text-sm text-slate-300 mt-1">{pdf.description}</p>
+                    <p className="text-xs text-slate-400 mt-1">{t('uploadDate')}: {new Date(pdf.uploadDate).toLocaleDateString('ar-EG')}</p>
                      {pdf.assignedUserIds.length > 0 && (
                         <div className="mt-2">
-                            <p className="text-xs font-semibold text-gray-200">{t('assignedUsers')}</p>
+                            <p className="text-xs font-semibold text-slate-200">{t('assignedUsers')}</p>
                             <div className="flex flex-wrap gap-1 mt-1">
                             {pdf.assignedUserIds.map(userId => {
                                 const user = allUsers.find(u => u.id === userId);
-                                return user ? <span key={userId} className="text-xs bg-gray-600 text-gray-200 px-2 py-0.5 rounded-full">{user.name}</span> : null;
+                                return user ? <span key={userId} className="text-xs bg-slate-600 text-slate-200 px-2 py-0.5 rounded-full">{user.name}</span> : null;
                             })}
                             </div>
                         </div>
@@ -713,13 +951,13 @@ const PdfFormModal: React.FC<PdfFormModalProps> = ({ isOpen, onClose, pdfData, o
                         {fileError && <p className="text-xs text-red-400 mt-1">{fileError}</p>}
                     </div>
                 )}
-                {formData.id && formData.fileName && <p className="text-gray-300"><strong>{t('pdfFileName')}:</strong> {formData.fileName}</p>}
+                {formData.id && formData.fileName && <p className="text-slate-300"><strong>{t('pdfFileName')}:</strong> {formData.fileName}</p>}
                 <Textarea label={t('pdfDescription')} name="description" value={formData.description || ''} onChange={handleChange} required />
                 
                 <div>
-                    <h4 className="text-md font-semibold mb-2 text-gray-200">{t('selectUsersToAssign')}</h4>
-                    {allUsers.length === 0 && <p className="text-sm text-gray-400">{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
-                    <div className="max-h-40 overflow-y-auto space-y-2 border border-gray-700 p-2 rounded-md">
+                    <h4 className="text-md font-semibold mb-2 text-slate-200">{t('selectUsersToAssign')}</h4>
+                    {allUsers.length === 0 && <p className="text-sm text-slate-400">{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
+                    <div className="max-h-40 overflow-y-auto space-y-2 border border-slate-700 p-3 rounded-md bg-slate-900 bg-opacity-50">
                         {allUsers.map(user => (
                             <div key={user.id} className="flex items-center">
                                 <input 
@@ -727,15 +965,15 @@ const PdfFormModal: React.FC<PdfFormModalProps> = ({ isOpen, onClose, pdfData, o
                                     id={`user-assign-${user.id}`}
                                     checked={formData.assignedUserIds?.includes(user.id) || false}
                                     onChange={() => handleUserAssignmentChange(user.id)}
-                                    className={`w-4 h-4 text-${THEME_COLORS.primary} bg-gray-700 border-gray-600 rounded focus:ring-${THEME_COLORS.primary} focus:ring-2`}
+                                    className={`w-4 h-4 text-${THEME_COLORS.primary} bg-slate-700 border-slate-600 rounded focus:ring-${THEME_COLORS.primary} focus:ring-2 focus:ring-offset-slate-800`}
                                 />
-                                <label htmlFor={`user-assign-${user.id}`} className="ms-2 text-sm font-medium text-gray-300">{user.name} ({user.email})</label>
+                                <label htmlFor={`user-assign-${user.id}`} className="ms-2 text-sm font-medium text-slate-300">{user.name} ({user.email})</label>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-gray-700">
+                <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-700">
                     <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>{t('cancel')}</Button>
                     <Button type="submit" isLoading={isLoading} disabled={isLoading || (fileError && !!formData.file) || (!formData.id && !formData.file)}>
                         {formData.id ? t('saveChanges') : t('uploadPdf')}
@@ -806,19 +1044,24 @@ const ManageSubscriptionPlansSection: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-white">{t('manageSubscriptionPlans')}</h2>
-        <Button onClick={openModalForAdd}>{t('addSubscriptionPlan')}</Button>
+        <Button onClick={openModalForAdd} variant="primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 me-2">
+               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+            {t('addSubscriptionPlan')}
+        </Button>
       </div>
-      {plans.length === 0 && <p className="text-gray-400 text-center">{t('noPlansDefined', 'لا توجد خطط اشتراك معرفة حاليًا.')}</p>}
+      {plans.length === 0 && <p className="text-slate-400 text-center py-8">{t('noPlansDefined', 'لا توجد خطط اشتراك معرفة حاليًا.')}</p>}
       <div className="space-y-4">
         {plans.map(plan => (
-          <Card key={plan.id} className="p-4">
+          <Card key={plan.id} className="p-4 hover:border-sky-500">
             <div className="flex flex-col md:flex-row justify-between md:items-center">
                 <div>
                     <h3 className={`text-xl font-semibold text-${THEME_COLORS.primary}`}>{plan.name}</h3>
                     <p className="text-lg text-white">{plan.price} {plan.currency}</p>
-                    <p className="text-sm text-gray-300 mt-1">{plan.description}</p>
-                    <ul className="list-disc list-inside mt-2 text-sm text-gray-400">
-                        {plan.features.map(feature => <li key={feature.id}>{feature.text}</li>)}
+                    <p className="text-sm text-slate-300 mt-1">{plan.description}</p>
+                    <ul className="list-disc list-inside mt-2 text-sm text-slate-400 space-y-1">
+                        {plan.features.map(feature => <li key={feature.id} className="flex items-start"><svg className="w-4 h-4 text-lime-400 me-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>{feature.text}</li>)}
                     </ul>
                 </div>
                 <div className="flex gap-2 mt-3 md:mt-0 self-start md:self-center">
@@ -918,7 +1161,7 @@ const SubscriptionPlanFormModal: React.FC<SubscriptionPlanFormModalProps> = ({ i
                     <Button type="button" variant="ghost" size="sm" onClick={addFeatureField}>{t('addFeature')}</Button>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-gray-700">
+                <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-700">
                     <Button type="button" variant="ghost" onClick={onClose}>{t('cancel')}</Button>
                     <Button type="submit">{t('saveChanges')}</Button>
                 </div>
@@ -969,18 +1212,18 @@ const ApproveSubscriptionsSection: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold text-white mb-4">{t('pendingSubscriptions')}</h2>
+      <h2 className="text-2xl font-semibold text-white mb-6">{t('pendingSubscriptions')}</h2>
       {requests.length === 0 ? (
-        <p className="text-gray-400">{t('noPendingSubscriptions')}</p>
+        <p className="text-slate-400 py-8 text-center">{t('noPendingSubscriptions')}</p>
       ) : (
         <div className="space-y-4">
           {requests.map(req => {
             return (
-              <Card key={req.id} className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    <div><strong className="text-gray-300">{t('user')}:</strong> {req.userEmail}</div>
-                    <div><strong className="text-gray-300">{t('plan')}:</strong> {req.planNameSnapshot} ({t('requested', 'مطلوب')})</div>
-                    <div className="flex gap-2">
+              <Card key={req.id} className="p-4 hover:border-sky-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+                    <div><strong className="text-slate-300">{t('user')}:</strong> <span className="text-white">{req.userEmail}</span></div>
+                    <div><strong className="text-slate-300">{t('plan')}:</strong> <span className="text-white">{req.planNameSnapshot}</span> (<span className="text-yellow-400">{t('requested', 'مطلوب')}</span>)</div>
+                    <div className="flex gap-2 items-end">
                         <Input 
                             type="number" 
                             label={t('setDuration')}
@@ -989,10 +1232,11 @@ const ApproveSubscriptionsSection: React.FC = () => {
                             min="1"
                             placeholder={t('durationDaysPlaceholder')}
                             aria-describedby={`duration-help-${req.id}`}
+                            className="w-full md:w-auto"
                         />
-                         <small id={`duration-help-${req.id}`} className="text-xs text-gray-400 mt-1 hidden">{t('daysDurationHelp', 'أدخل عدد أيام صلاحية الاشتراك.')}</small>
+                         <small id={`duration-help-${req.id}`} className="text-xs text-slate-400 mt-1 hidden">{t('daysDurationHelp', 'أدخل عدد أيام صلاحية الاشتراك.')}</small>
                     </div>
-                    <div className="flex gap-2 justify-end self-end md:self-center">
+                    <div className="flex gap-2 justify-end self-center">
                         <Button onClick={() => handleApprove(req.id)} size="sm" variant="primary" disabled={!durationDays[req.id] || durationDays[req.id] <=0 }>{t('approve')}</Button>
                         <Button onClick={() => handleReject(req.id)} size="sm" variant="danger">{t('reject')}</Button>
                     </div>
@@ -1002,6 +1246,62 @@ const ApproveSubscriptionsSection: React.FC = () => {
           })}
         </div>
       )}
+    </div>
+  );
+};
+
+
+const SendGlobalNotificationSection: React.FC = () => {
+  const { t } = useLocalization();
+  const { currentUser, isSiteManager, refreshNotifications } = useAuth();
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
+
+  if (!isSiteManager || !currentUser) {
+    return <p>{t('adminAccessOnly')}</p>;
+  }
+
+  const handleSendNotification = () => {
+    if (!message.trim()) {
+      setFeedback({ type: 'error', message: t('fieldRequired') });
+      return;
+    }
+    setIsLoading(true);
+    setFeedback({ type: '', message: '' });
+    try {
+      DataService.addGlobalNotification(message, currentUser.id);
+      setFeedback({ type: 'success', message: t('notificationSentSuccess') });
+      setMessage('');
+      refreshNotifications(); // Refresh for current admin if they are also a user
+    } catch (error: any) {
+      setFeedback({ type: 'error', message: error.message || t('errorOccurred') });
+    }
+    setIsLoading(false);
+    setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-semibold text-white mb-6">{t('sendGlobalNotification')}</h2>
+      {feedback.message && (
+        <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>
+          {feedback.message}
+        </p>
+      )}
+      <div className="space-y-4">
+        <Textarea
+          label={t('notificationMessage')}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={t('enterYourMessage')}
+          rows={5}
+          required
+        />
+        <Button onClick={handleSendNotification} isLoading={isLoading} variant="primary" size="lg">
+          {t('sendToAllUsers')}
+        </Button>
+      </div>
     </div>
   );
 };
