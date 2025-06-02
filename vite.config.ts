@@ -5,10 +5,9 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on mode (development, production).
-  // envDir defaults to process.cwd(), but explicitly passing it can resolve issues in some CI environments.
-  // By passing `undefined` as the second argument, we let loadEnv use its default for envDir (which is process.cwd()).
+  // The second argument, '.', specifies the current directory (project root) as the envDir.
   // The third argument `''` ensures all environment variables are loaded, regardless of prefix.
-  const env = loadEnv(mode, undefined, '');
+  const env = loadEnv(mode, '.', '');
 
   return {
     plugins: [react()],
