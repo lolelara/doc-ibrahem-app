@@ -42,6 +42,8 @@ export const COUNTRIES_LIST = [
   // Add more countries as needed
 ];
 
+export const TRANSFORMATION_IMAGE_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+
 export const AR_TRANSLATIONS: Translations = {
   appName: "My Fit Coach",
   tagline: "مدربك الشخصي نحو صحة أفضل",
@@ -226,7 +228,6 @@ export const AR_TRANSLATIONS: Translations = {
   cannotModifySiteManager: "لا يمكن تعديل دور مدير الموقع الأساسي.",
   actionNotAllowed: "الإجراء غير مسموح به.",
 
-
   // PDF Library
   managePdfs: "إدارة ملفات PDF",
   pdfLibrary: "مكتبة PDF",
@@ -274,6 +275,34 @@ export const AR_TRANSLATIONS: Translations = {
   markAllAsRead: "وضع علامة على الكل كمقروء",
   newNotification: "إشعار جديد!",
   notifications: "الإشعارات",
+
+  // Transformations Feature
+  transformations: "التحولات",
+  shareYourProgress: "شارك تقدمك",
+  beforePhoto: "الصورة قبل",
+  afterPhoto: "الصورة بعد",
+  titleOrCaption: "العنوان أو الوصف",
+  publishPost: "نشر المنشور",
+  likes: "إعجابات",
+  comments: "تعليقات",
+  addComment: "إضافة تعليق",
+  confirmDeletePost: "هل أنت متأكد أنك تريد حذف هذا المنشور؟",
+  deletePost: "حذف المنشور",
+  confirmDeleteComment: "هل أنت متأكد أنك تريد حذف هذا التعليق؟",
+  deleteComment: "حذف التعليق",
+  noCommentsYet: "لا توجد تعليقات بعد.",
+  addYourComment: "أضف تعليقك...",
+  imageTooLarge: "الصورة كبيرة جدًا.",
+  invalidImageType: "نوع الملف غير صالح. يرجى رفع صورة.",
+  allFieldsAndImagesRequired: "يرجى ملء العنوان ورفع الصورتين.",
+  noTransformationsPosted: "لم يتم نشر أي تحولات بعد. كن أول من يشارك!",
+  topTransformations: "أبرز التحولات",
+  interactions: "تفاعلات",
+  postDeletedSuccess: "تم حذف المنشور بنجاح.",
+  commentAddedSuccess: "تمت إضافة التعليق بنجاح.",
+  commentDeletedSuccess: "تم حذف التعليق بنجاح.",
+  manageTransformations: "إدارة التحولات",
+  viewPostDetails: "عرض التفاصيل والتعليقات",
 };
 
 export const INITIAL_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [

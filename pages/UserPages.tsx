@@ -48,7 +48,7 @@ const DashboardPage: React.FC = () => {
 
   const handleDownloadPdf = (pdf: PdfDocument) => {
     const link = document.createElement('a');
-    link.href = pdf.fileData; // Base64 data URL
+    link.href = pdf.fileData; 
     link.download = pdf.fileName;
     document.body.appendChild(link);
     link.click();
@@ -58,51 +58,51 @@ const DashboardPage: React.FC = () => {
   if (!currentUser) return <Spinner />;
 
   return (
-    <div className="space-y-8">
-      {message && <div className={`p-4 mb-4 text-sm rounded-lg bg-opacity-20 ${message.includes('محظور') || message.includes('denied') ? `bg-red-500 text-red-300` : `bg-yellow-500 text-yellow-300`}`}>{message}</div>}
-      <h1 className="text-3xl font-bold text-white">{t('dashboard')}</h1>
+    <div className="space-y-6 sm:space-y-8">
+      {message && <div className={`p-3 sm:p-4 mb-4 text-xs sm:text-sm rounded-lg bg-opacity-20 ${message.includes('محظور') || message.includes('denied') ? `bg-red-500 text-red-300` : `bg-yellow-500 text-yellow-300`}`}>{message}</div>}
+      <h1 className="text-2xl sm:text-3xl font-bold text-white">{t('dashboard')}</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="p-6">
-          <h2 className="text-2xl font-semibold text-emerald-400 mb-4">{t('myStats')}</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+        <Card className="p-4 sm:p-6">
+          <h2 className="text-xl sm:text-2xl font-semibold text-emerald-400 mb-3 sm:mb-4">{t('myStats')}</h2>
           <StatsTracker />
         </Card>
 
-        <div className="space-y-8">
-            <Card className="p-6">
-                <h2 className="text-2xl font-semibold text-sky-400 mb-4">{t('currentPlan')}</h2>
+        <div className="space-y-4 sm:space-y-6 md:space-y-8">
+            <Card className="p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-sky-400 mb-3 sm:mb-4">{t('currentPlan')}</h2>
                 {currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE && currentPlanDetails && currentUser.subscriptionExpiry ? (
                 <div>
-                    <p className="text-lg"><strong className="font-semibold">{currentPlanDetails.name}</strong></p>
-                    <p className="text-gray-300">{currentPlanDetails.description}</p>
-                    <ul className="list-disc list-inside mt-2 text-gray-300">
+                    <p className="text-md sm:text-lg"><strong className="font-semibold">{currentPlanDetails.name}</strong></p>
+                    <p className="text-slate-300 text-xs sm:text-sm">{currentPlanDetails.description}</p>
+                    <ul className="list-disc list-inside mt-2 text-slate-300 text-xs sm:text-sm space-y-0.5">
                         {currentPlanDetails.features.map(feature => <li key={feature.id}>{feature.text}</li>)}
                     </ul>
-                    <p className="text-gray-300 mt-2">{t('expiresOn')}: {new Date(currentUser.subscriptionExpiry).toLocaleDateString('ar-EG')}</p>
+                    <p className="text-slate-300 text-xs sm:text-sm mt-2">{t('expiresOn')}: {new Date(currentUser.subscriptionExpiry).toLocaleDateString('ar-EG')}</p>
                 </div>
                 ) : currentUser.subscriptionStatus === SubscriptionStatus.PENDING ? (
-                <p className="text-yellow-400">{t('pendingApproval')} - {DataService.getSubscriptionRequests().find(r => r.userId === currentUser.id && r.status === SubscriptionStatus.PENDING)?.planNameSnapshot}</p>
+                <p className="text-yellow-400 text-sm sm:text-base">{t('pendingApproval')} - {DataService.getSubscriptionRequests().find(r => r.userId === currentUser.id && r.status === SubscriptionStatus.PENDING)?.planNameSnapshot}</p>
                 ) : (
                 <div className="text-center">
-                    <p className="text-gray-400 mb-4">{t('noActivePlan')}</p>
-                    <Button onClick={() => navigate('/user/subscriptions')} variant="secondary">{t('browsePlans')}</Button>
+                    <p className="text-slate-400 text-sm sm:text-base mb-3 sm:mb-4">{t('noActivePlan')}</p>
+                    <Button onClick={() => navigate('/user/subscriptions')} variant="secondary" size="md">{t('browsePlans')}</Button>
                 </div>
                 )}
             </Card>
             
-            <Card className="p-6">
-                <h2 className="text-2xl font-semibold text-amber-400 mb-4">{t('myDocuments')}</h2>
+            <Card className="p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-amber-400 mb-3 sm:mb-4">{t('myDocuments')}</h2>
                 {assignedPdfs.length > 0 ? (
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                    <div className="space-y-2 sm:space-y-3 max-h-52 sm:max-h-60 overflow-y-auto">
                     {assignedPdfs.map(pdf => (
-                        <div key={pdf.id} className="p-3 bg-gray-700 rounded-md flex justify-between items-center">
+                        <div key={pdf.id} className="p-2 sm:p-3 bg-slate-700 rounded-md flex flex-col xs:flex-row xs:justify-between xs:items-center gap-2 xs:gap-0">
                         <div>
-                            <h4 className="font-semibold text-white">{pdf.fileName}</h4>
-                            <p className="text-xs text-gray-400">{pdf.description}</p>
+                            <h4 className="font-semibold text-white text-sm sm:text-base break-all">{pdf.fileName}</h4>
+                            <p className="text-xs text-slate-400">{pdf.description}</p>
                         </div>
-                        <Button onClick={() => handleDownloadPdf(pdf)} size="sm" variant="ghost">
+                        <Button onClick={() => handleDownloadPdf(pdf)} size="sm" variant="ghost" className="!text-xs !px-2 !py-1 self-end xs:self-center">
                             {t('downloadPdf')}
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ms-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 sm:w-4 sm:h-4 ms-1 sm:ms-2">
                             <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v9.546l2.47-2.47a.75.75 0 111.06 1.06l-3.75 3.75a.75.75 0 01-1.06 0L5.22 11.886a.75.75 0 111.06-1.06l2.47 2.47V3.75A.75.75 0 0110 3zM3.75 14A1.75 1.75 0 012 15.75v.5A1.75 1.75 0 003.75 18h12.5A1.75 1.75 0 0018 16.25v-.5A1.75 1.75 0 0116.25 14h-3.563a.75.75 0 110-1.5h3.563A3.25 3.25 0 0020 15.75v.5A3.25 3.25 0 0116.25 19.5H3.75A3.25 3.25 0 010 16.25v-.5A3.25 3.25 0 003.75 12.5h3.563a.75.75 0 010 1.5H3.75z" clipRule="evenodd" />
                             </svg>
                         </Button>
@@ -110,7 +110,7 @@ const DashboardPage: React.FC = () => {
                     ))}
                     </div>
                 ) : (
-                    <p className="text-gray-400">{t('noPdfsAssigned')}</p>
+                    <p className="text-slate-400 text-sm sm:text-base">{t('noPdfsAssigned')}</p>
                 )}
             </Card>
         </div>
@@ -119,7 +119,7 @@ const DashboardPage: React.FC = () => {
   );
 };
 
-// Stats Tracker Component (within Dashboard)
+// Stats Tracker Component
 const StatsTracker: React.FC = () => {
   const { currentUser, setCurrentUser } = useAuth();
   const { t } = useLocalization();
@@ -161,45 +161,45 @@ const StatsTracker: React.FC = () => {
   if (!currentUser) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {isEditing ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <Input label={t('weightKg')} name="weight" type="number" step="0.1" value={stats.weight || ''} onChange={handleChange} />
             <Input label={t('heightCm')} name="height" type="number" step="0.1" value={stats.height || ''} onChange={handleChange} />
             <Input label={t('bodyFatPercentage')} name="bodyFatPercentage" type="number" step="0.1" value={stats.bodyFatPercentage || ''} onChange={handleChange} />
           </div>
-           <h3 className="text-lg font-semibold mt-4 mb-2">{t('progressNotes')}</h3>
-          <div className="space-y-2">
+           <h3 className="text-md sm:text-lg font-semibold mt-3 sm:mt-4 mb-1 sm:mb-2">{t('progressNotes')}</h3>
+          <div className="space-y-1.5 sm:space-y-2">
             {(stats.progressNotes || []).map((note, index) => (
-              <p key={index} className="text-sm text-gray-300 bg-gray-700 p-2 rounded">{note}</p>
+              <p key={index} className="text-xs sm:text-sm text-slate-300 bg-slate-700 p-1.5 sm:p-2 rounded">{note}</p>
             ))}
           </div>
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-1 sm:gap-2 mt-1.5 sm:mt-2">
             <Input type="text" value={newNote} onChange={e => setNewNote(e.target.value)} placeholder={t('addNotePlaceholder', 'اكتب ملاحظة جديدة عن تقدمك...')} className="flex-grow"/>
             <Button onClick={handleAddNote} variant="secondary" size="sm">{t('addNote')}</Button>
           </div>
-          <div className="flex gap-2 mt-4">
-            <Button onClick={handleSaveStats} isLoading={isLoading}>{t('saveChanges')}</Button>
-            <Button onClick={() => { setIsEditing(false); setStats(currentUser?.stats || {}); }} variant="ghost">{t('cancel')}</Button>
+          <div className="flex gap-2 mt-3 sm:mt-4">
+            <Button onClick={handleSaveStats} isLoading={isLoading} size="md">{t('saveChanges')}</Button>
+            <Button onClick={() => { setIsEditing(false); setStats(currentUser?.stats || {}); }} variant="ghost" size="md">{t('cancel')}</Button>
           </div>
         </>
       ) : (
          <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-gray-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 text-slate-200 text-sm sm:text-base">
             <p><strong>{t('weightKg')}:</strong> {stats.weight || 'N/A'}</p>
             <p><strong>{t('heightCm')}:</strong> {stats.height || 'N/A'}</p>
             <p><strong>{t('bodyFatPercentage')}:</strong> {stats.bodyFatPercentage ? `${stats.bodyFatPercentage}%` : 'N/A'}</p>
           </div>
-          <h3 className="text-lg font-semibold mt-4 mb-2">{t('progressNotes')}</h3>
+          <h3 className="text-md sm:text-lg font-semibold mt-3 sm:mt-4 mb-1 sm:mb-2">{t('progressNotes')}</h3>
           {stats.progressNotes && stats.progressNotes.length > 0 ? (
-            <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-700 p-2 rounded">
+            <div className="space-y-1.5 sm:space-y-2 max-h-32 sm:max-h-40 overflow-y-auto bg-slate-700 p-1.5 sm:p-2 rounded">
               {stats.progressNotes.map((note, index) => (
-                <p key={index} className="text-sm text-gray-300">{note}</p>
+                <p key={index} className="text-xs sm:text-sm text-slate-300">{note}</p>
               ))}
             </div>
-          ) : <p className="text-sm text-gray-400">{t('noNotesYet', 'لا توجد ملاحظات تقدم بعد.')}</p>}
-          <Button onClick={() => setIsEditing(true)} className="mt-4">{t('editStats', 'تعديل الإحصائيات')}</Button>
+          ) : <p className="text-xs sm:text-sm text-slate-400">{t('noNotesYet', 'لا توجد ملاحظات تقدم بعد.')}</p>}
+          <Button onClick={() => setIsEditing(true)} className="mt-3 sm:mt-4" size="md">{t('editStats', 'تعديل الإحصائيات')}</Button>
         </>
       )}
     </div>
@@ -245,7 +245,6 @@ const ProfilePage: React.FC = () => {
         phoneNumber,
         country
     };
-    // Pass undefined for currentAdminId as this is a self-update, not a role change by admin
     try {
         const updatedUser = DataService.updateUser(updatedUserDetails, undefined); 
         if (updatedUser) {
@@ -262,23 +261,23 @@ const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-6">{t('profile')}</h1>
-      <Card className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="max-w-lg sm:max-w-xl md:max-w-2xl mx-auto">
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">{t('profile')}</h1>
+      <Card className="p-4 sm:p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <Input label={t('name')} id="name" type="text" value={name} onChange={e => setName(e.target.value)} required />
           <Input label={t('email')} id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required 
-                 disabled={currentUser.email === ADMIN_EMAIL} // Site Manager cannot change their email
+                 disabled={currentUser.email === ADMIN_EMAIL} 
           />
           <div>
-            <label htmlFor="country-profile" className={`block text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('country')}</label>
+            <label htmlFor="country-profile" className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('country')}</label>
             <select 
                 id="country-profile" 
                 name="country" 
                 value={country} 
                 onChange={e => setCountry(e.target.value)} 
                 required
-                className={`block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} sm:text-sm text-white`}
+                className={`block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-white`}
             >
                 {COUNTRIES_LIST.map(c => (
                     <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option>
@@ -286,9 +285,9 @@ const ProfilePage: React.FC = () => {
             </select>
           </div>
           <Input label={t('phoneNumber')} id="phoneNumber" type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} required />
-          {message && <p className="text-sm text-green-400">{message}</p>}
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <Button type="submit" isLoading={isLoading}>{t('saveChanges')}</Button>
+          {message && <p className="text-xs sm:text-sm text-green-400">{message}</p>}
+          {error && <p className="text-xs sm:text-sm text-red-400">{error}</p>}
+          <Button type="submit" isLoading={isLoading} size="md">{t('saveChanges')}</Button>
         </form>
       </Card>
     </div>
@@ -334,39 +333,40 @@ const SubscriptionPlansPage: React.FC = () => {
 
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-white text-center">{t('subscriptions')}</h1>
-      {pageMessage && <div className={`p-4 mb-4 text-sm rounded-lg bg-opacity-20 bg-red-500 text-red-300`}>{pageMessage}</div>}
-      {error && <p className="text-sm text-red-400 text-center bg-red-900 p-3 rounded-md">{error}</p>}
-      {success && <p className="text-sm text-green-400 text-center bg-green-900 p-3 rounded-md">{success}</p>}
+    <div className="space-y-6 sm:space-y-8">
+      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white text-center">{t('subscriptions')}</h1>
+      {pageMessage && <div className={`p-3 sm:p-4 mb-4 text-xs sm:text-sm rounded-lg bg-opacity-20 bg-red-500 text-red-300`}>{pageMessage}</div>}
+      {error && <p className="text-xs sm:text-sm text-red-400 text-center bg-red-900 p-2 sm:p-3 rounded-md">{error}</p>}
+      {success && <p className="text-xs sm:text-sm text-green-400 text-center bg-green-900 p-2 sm:p-3 rounded-md">{success}</p>}
       
-      {plans.length === 0 && <p className="text-center text-gray-400">{t('noPlansAvailable', 'لا توجد خطط اشتراك متاحة حاليًا.')}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {plans.length === 0 && <p className="text-center text-slate-400 py-6 sm:py-8">{t('noPlansAvailable', 'لا توجد خطط اشتراك متاحة حاليًا.')}</p>}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {plans.map(plan => (
-          <Card key={plan.id} className="p-6 flex flex-col justify-between">
+          <Card key={plan.id} className="p-4 sm:p-6 flex flex-col justify-between">
             <div>
-              <h2 className={`text-2xl font-semibold text-${THEME_COLORS.primary} mb-2`}>{plan.name}</h2>
-              <p className="text-3xl font-bold mb-1">{plan.price} <span className="text-sm text-gray-400">{plan.currency}</span></p>
-              <p className="text-gray-300 mb-4 text-sm">{plan.description}</p>
-              <ul className="space-y-1 mb-6">
+              <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.primary} mb-1 sm:mb-2`}>{plan.name}</h2>
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold mb-1">{plan.price} <span className="text-xs sm:text-sm text-slate-400">{plan.currency}</span></p>
+              <p className="text-slate-300 mb-3 sm:mb-4 text-xs sm:text-sm">{plan.description}</p>
+              <ul className="space-y-1 mb-4 sm:mb-6">
                 {plan.features.map((feature) => (
-                  <li key={feature.id} className="flex items-center text-gray-200 text-sm">
-                    <svg className="w-4 h-4 text-emerald-400 me-2 rtl:ms-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
+                  <li key={feature.id} className="flex items-center text-slate-200 text-xs sm:text-sm">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 me-1.5 sm:me-2 rtl:ms-1.5 sm:rtl:ms-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
                     {feature.text}
                   </li>
                 ))}
               </ul>
             </div>
             {currentUser?.subscriptionStatus === SubscriptionStatus.PENDING && currentUser?.activeSubscriptionPlanId === plan.id ? (
-               <Button disabled className="w-full mt-auto">{t('pendingApproval')}</Button>
+               <Button disabled className="w-full mt-auto text-sm sm:text-base">{t('pendingApproval')}</Button>
             ) : currentUser?.subscriptionStatus === SubscriptionStatus.ACTIVE && currentUser?.activeSubscriptionPlanId === plan.id ? (
-               <Button disabled variant="secondary" className="w-full mt-auto">{t('subscribed')}</Button>
+               <Button disabled variant="secondary" className="w-full mt-auto text-sm sm:text-base">{t('subscribed')}</Button>
             ) : (
                <Button 
                 onClick={() => handleSubscribe(plan.id)} 
                 isLoading={isLoading === plan.id}
                 disabled={!!currentUser?.subscriptionStatus && currentUser?.subscriptionStatus !== SubscriptionStatus.EXPIRED && currentUser?.subscriptionStatus !== SubscriptionStatus.CANCELLED && currentUser?.subscriptionStatus !== SubscriptionStatus.REJECTED}
-                className="w-full mt-auto"
+                className="w-full mt-auto text-sm sm:text-base"
+                size="md"
                >
                 {t('subscribe')}
                </Button>

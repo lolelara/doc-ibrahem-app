@@ -138,4 +138,26 @@ export interface Notification {
   readByUserIds: string[]; // Tracks which users have read/dismissed this notification
 }
 
-// Macronutrient Calculator Types REMOVED
+// User Transformation Posts
+export interface TransformationPost {
+  id: string;
+  userId: string;
+  userName: string; // Snapshot of user's name at time of posting
+  userProfileImage?: string; // Snapshot of user's profile image
+  title: string;
+  beforeImageUrl: string; // Base64 data URL
+  afterImageUrl: string; // Base64 data URL
+  createdAt: string; // ISO date string
+  likes: string[]; // Array of user IDs who liked the post
+  commentsCount: number;
+}
+
+export interface TransformationComment {
+  id: string;
+  postId: string;
+  userId: string;
+  userName: string; // Snapshot of commenter's name
+  userProfileImage?: string; // Snapshot of commenter's profile image
+  text: string;
+  createdAt: string; // ISO date string
+}

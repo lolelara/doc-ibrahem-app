@@ -1,6 +1,6 @@
 
-import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature, Notification } from '../types';
-import { ADMIN_EMAIL, INITIAL_WORKOUT_VIDEOS, INITIAL_RECIPES, INITIAL_SUBSCRIPTION_PLANS, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST } from '../constants';
+import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature, Notification, TransformationPost, TransformationComment } from '../types';
+import { ADMIN_EMAIL, INITIAL_WORKOUT_VIDEOS, INITIAL_RECIPES, INITIAL_SUBSCRIPTION_PLANS, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST, TRANSFORMATION_IMAGE_MAX_SIZE_BYTES } from '../constants';
 
 const LS_USERS = 'fitzone_users';
 const LS_WORKOUT_VIDEOS = 'fitzone_workout_videos';
@@ -9,6 +9,8 @@ const LS_SUBSCRIPTION_REQUESTS = 'fitzone_subscription_requests';
 const LS_SUBSCRIPTION_PLANS = 'fitzone_subscription_plans';
 const LS_PDF_DOCUMENTS = 'fitzone_pdf_documents';
 const LS_GLOBAL_NOTIFICATIONS = 'fitzone_global_notifications';
+const LS_TRANSFORMATION_POSTS = 'fitzone_transformation_posts';
+const LS_TRANSFORMATION_COMMENTS = 'fitzone_transformation_comments';
 
 
 const getFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
@@ -92,6 +94,13 @@ const initializeData = () => {
   if (getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []).length === 0) {
     saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, []);
   }
+  // Initialize new transformation data stores
+  if (getFromLocalStorage<TransformationPost[]>(LS_TRANSFORMATION_POSTS, []).length === 0) {
+    saveToLocalStorage(LS_TRANSFORMATION_POSTS, []);
+  }
+  if (getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []).length === 0) {
+    saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, []);
+  }
 };
 
 
@@ -114,13 +123,16 @@ export const addUser = (user: Omit<User, 'id' | 'role'> & { role?: UserRole }): 
   if (!user.phoneNumber) { // Phone number is now mandatory
     throw new Error("Phone number is required.");
   }
+   if (!user.country) { // Country is now mandatory
+    throw new Error("Country is required.");
+  }
 
   const newUser: User = {
     ...user,
     id: `user_${Date.now()}`,
     role: role,
-    phoneNumber: user.phoneNumber, // Already checked for presence
-    country: user.country || COUNTRIES_LIST[0]?.code || '',
+    phoneNumber: user.phoneNumber, 
+    country: user.country,
   };
   
   if (user.email === ADMIN_EMAIL && newUser.role !== UserRole.SITE_MANAGER) {
@@ -252,6 +264,19 @@ export const deleteUser = (userIdToDelete: string, siteManagerId: string): boole
     }
   });
   saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, globalNotifications);
+
+  // 4. Transformation Posts and Comments
+  let transformationPosts = getTransformationPosts();
+  const userPosts = transformationPosts.filter(post => post.userId === userIdToDelete);
+  userPosts.forEach(post => deleteTransformationPostInternal(post.id)); // This will also delete comments for these posts
+  
+  // Remove comments made by the deleted user on other posts
+  let allComments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
+  const commentsByDeletedUser = allComments.filter(comment => comment.userId === userIdToDelete);
+  
+  commentsByDeletedUser.forEach(comment => {
+    deleteTransformationCommentInternal(comment.id, true); // true to skip admin check if needed here, or pass adminId
+  });
 
 
   return true;
@@ -617,4 +642,157 @@ export const markAllGlobalNotificationsAsReadForUser = (userId: string): void =>
   if (changed) {
     saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, notifications);
   }
+};
+
+// Transformation Posts Management
+export const getTransformationPosts = (): TransformationPost[] => getFromLocalStorage<TransformationPost[]>(LS_TRANSFORMATION_POSTS, []);
+export const getTransformationPostById = (postId: string): TransformationPost | undefined => getTransformationPosts().find(p => p.id === postId);
+
+const imageFileToBase64Service = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (file.size > TRANSFORMATION_IMAGE_MAX_SIZE_BYTES) {
+      reject(new Error(`File is too large. Max size: ${TRANSFORMATION_IMAGE_MAX_SIZE_BYTES / (1024 * 1024)}MB`));
+      return;
+    }
+     if (!file.type.startsWith('image/')) { // Basic image type check
+        reject(new Error("Invalid file type. Only images are allowed."));
+        return;
+    }
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
+export const addTransformationPost = async (
+  postData: Omit<TransformationPost, 'id' | 'createdAt' | 'likes' | 'commentsCount' | 'userName' | 'userProfileImage' | 'beforeImageUrl' | 'afterImageUrl'>,
+  beforeFile: File,
+  afterFile: File,
+  creator: User
+): Promise<TransformationPost> => {
+  const posts = getTransformationPosts();
+  const beforeImageUrl = await imageFileToBase64Service(beforeFile);
+  const afterImageUrl = await imageFileToBase64Service(afterFile);
+
+  const newPost: TransformationPost = {
+    ...postData,
+    id: `tp_${Date.now()}`,
+    userName: creator.name,
+    userProfileImage: creator.profileImage,
+    beforeImageUrl,
+    afterImageUrl,
+    createdAt: new Date().toISOString(),
+    likes: [],
+    commentsCount: 0,
+  };
+  posts.push(newPost);
+  saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
+  return newPost;
+};
+
+const deleteTransformationPostInternal = (postId: string): void => {
+    let posts = getTransformationPosts();
+    posts = posts.filter(p => p.id !== postId);
+    saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
+    // Also delete all comments associated with this post
+    let comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
+    comments = comments.filter(c => c.postId !== postId);
+    saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, comments);
+}
+
+export const deleteTransformationPost = (postId: string, adminUserId: string): boolean => {
+  const adminUser = getUserById(adminUserId);
+  if (!adminUser || (adminUser.role !== UserRole.ADMIN && adminUser.role !== UserRole.SITE_MANAGER)) {
+    throw new Error("Action not allowed. Admin rights required.");
+  }
+  const post = getTransformationPostById(postId);
+  if (!post) return false;
+
+  deleteTransformationPostInternal(postId);
+  return true;
+};
+
+export const likeTransformationPost = (postId: string, userId: string): TransformationPost | undefined => {
+  let posts = getTransformationPosts();
+  const postIndex = posts.findIndex(p => p.id === postId);
+  if (postIndex === -1) return undefined;
+  if (!posts[postIndex].likes.includes(userId)) {
+    posts[postIndex].likes.push(userId);
+    saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
+  }
+  return posts[postIndex];
+};
+
+export const unlikeTransformationPost = (postId: string, userId: string): TransformationPost | undefined => {
+  let posts = getTransformationPosts();
+  const postIndex = posts.findIndex(p => p.id === postId);
+  if (postIndex === -1) return undefined;
+  posts[postIndex].likes = posts[postIndex].likes.filter(uid => uid !== userId);
+  saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
+  return posts[postIndex];
+};
+
+// Transformation Comments Management
+export const getCommentsForPost = (postId: string): TransformationComment[] => {
+  const comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
+  return comments.filter(c => c.postId === postId).sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+};
+
+export const addTransformationComment = (
+  commentData: Omit<TransformationComment, 'id' | 'createdAt' | 'userName' | 'userProfileImage'>,
+  commenter: User
+): TransformationComment => {
+  const comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
+  const newComment: TransformationComment = {
+    ...commentData,
+    id: `tc_${Date.now()}`,
+    userName: commenter.name,
+    userProfileImage: commenter.profileImage,
+    createdAt: new Date().toISOString(),
+  };
+  comments.push(newComment);
+  saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, comments);
+
+  // Update commentsCount on the parent post
+  let posts = getTransformationPosts();
+  const postIndex = posts.findIndex(p => p.id === commentData.postId);
+  if (postIndex !== -1) {
+    posts[postIndex].commentsCount = (posts[postIndex].commentsCount || 0) + 1;
+    saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
+  }
+  return newComment;
+};
+
+const deleteTransformationCommentInternal = (commentId: string, isCascadeFromUserDelete = false): void => {
+    let comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
+    const commentIndex = comments.findIndex(c => c.id === commentId);
+    if (commentIndex === -1) return;
+
+    const commentToDelete = comments[commentIndex];
+    comments.splice(commentIndex, 1);
+    saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, comments);
+
+    // Update commentsCount on the parent post
+    let posts = getTransformationPosts();
+    const postIndex = posts.findIndex(p => p.id === commentToDelete.postId);
+    if (postIndex !== -1) {
+      posts[postIndex].commentsCount = Math.max(0, (posts[postIndex].commentsCount || 0) - 1);
+      saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
+    }
+}
+
+export const deleteTransformationComment = (commentId: string, adminUserId: string): boolean => {
+  const adminUser = getUserById(adminUserId);
+  const comment = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []).find(c => c.id === commentId);
+
+  if (!comment) return false;
+
+  // Allow admin or owner of comment to delete
+  if (!adminUser || ((adminUser.role !== UserRole.ADMIN && adminUser.role !== UserRole.SITE_MANAGER) && comment.userId !== adminUserId) ) {
+     throw new Error("Action not allowed. Admin rights or ownership required.");
+  }
+  
+  deleteTransformationCommentInternal(commentId);
+  return true;
 };
