@@ -275,8 +275,7 @@ export const deleteUser = (userIdToDelete: string, siteManagerId: string): boole
   const commentsByDeletedUser = allComments.filter(comment => comment.userId === userIdToDelete);
   
   commentsByDeletedUser.forEach(comment => {
-    // Passing siteManagerId for admin check or true if cascade deletion doesn't need it
-    deleteTransformationCommentInternal(comment.id, true); 
+    deleteTransformationCommentInternal(comment.id, true); // true to skip admin check if needed here, or pass adminId
   });
 
 
@@ -678,9 +677,9 @@ export const addTransformationPost = async (
 
   const newPost: TransformationPost = {
     ...postData,
-    id: `tp_${Date.now()}_${Math.random().toString(36).substring(2,7)}`, // Added randomness for better uniqueness
-    userName: creator.name, // Snapshot
-    userProfileImage: creator.profileImage, // Snapshot
+    id: `tp_${Date.now()}`,
+    userName: creator.name,
+    userProfileImage: creator.profileImage,
     beforeImageUrl,
     afterImageUrl,
     createdAt: new Date().toISOString(),
@@ -747,9 +746,9 @@ export const addTransformationComment = (
   const comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
   const newComment: TransformationComment = {
     ...commentData,
-    id: `tc_${Date.now()}_${Math.random().toString(36).substring(2,7)}`, // Added randomness
-    userName: commenter.name, // Snapshot
-    userProfileImage: commenter.profileImage, // Snapshot
+    id: `tc_${Date.now()}`,
+    userName: commenter.name,
+    userProfileImage: commenter.profileImage,
     createdAt: new Date().toISOString(),
   };
   comments.push(newComment);
@@ -783,14 +782,14 @@ const deleteTransformationCommentInternal = (commentId: string, isCascadeFromUse
     }
 }
 
-export const deleteTransformationComment = (commentId: string, currentUserId: string): boolean => {
-  const currentUser = getUserById(currentUserId);
+export const deleteTransformationComment = (commentId: string, adminUserId: string): boolean => {
+  const adminUser = getUserById(adminUserId);
   const comment = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []).find(c => c.id === commentId);
 
   if (!comment) return false;
 
   // Allow admin or owner of comment to delete
-  if (!currentUser || ((currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SITE_MANAGER) && comment.userId !== currentUserId) ) {
+  if (!adminUser || ((adminUser.role !== UserRole.ADMIN && adminUser.role !== UserRole.SITE_MANAGER) && comment.userId !== adminUserId) ) {
      throw new Error("Action not allowed. Admin rights or ownership required.");
   }
   

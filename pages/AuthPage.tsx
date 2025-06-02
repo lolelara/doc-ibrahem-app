@@ -213,21 +213,21 @@ const FeaturedTransformationsSection: React.FC = () => {
     }
     
     const handleViewPost = (postId: string) => {
-        // Navigate to the main transformations page; individual post view will be handled there if user clicks again
-        // Or, in future, navigate directly to a single post view: navigate(`/transformations/${postId}`);
-        navigate('/transformations');
-        console.log("Viewing post:", postId); 
+        // For now, clicking a featured post might not navigate if user is not logged in.
+        // Future: navigate to a public view or the main transformations page if it becomes public.
+        // For now, do nothing or simply log.
+        console.log("View post:", postId); 
     };
 
     return (
         <div className="w-full max-w-5xl mx-auto mt-10 mb-6">
             <h3 className="text-xl sm:text-2xl font-semibold text-center text-sky-400 mb-4 sm:mb-6">{t('topTransformations')}</h3>
-            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                 {topPosts.map(post => (
                     <Card key={post.id} className="p-0 overflow-hidden group" onClick={() => handleViewPost(post.id)}>
                         <div className="relative">
                             <img 
-                                src={post.afterImageUrl || post.beforeImageUrl} // Fallback to before if after is missing for some reason
+                                src={post.afterImageUrl} 
                                 alt={post.title} 
                                 className="w-full h-32 sm:h-40 object-cover transition-transform duration-300 group-hover:scale-110"
                             />

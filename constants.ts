@@ -251,7 +251,7 @@ export const AR_TRANSLATIONS: Translations = {
   // Site Manager User Editing
   editUserInfo: "تعديل معلومات المستخدم",
   deleteUser: "حذف المستخدم",
-  confirmDeleteUser: "هل أنت متأكد أنك تريد حذف المستخدم {userName}؟ سيتم حذف جميع بياناته المتعلقة بالاشتراكات وملفات PDF والتحولات.",
+  confirmDeleteUser: "هل أنت متأكد أنك تريد حذف المستخدم {userName}؟ سيتم حذف جميع بياناته المتعلقة بالاشتراكات وملفات PDF.",
   confirmEmailChange: "هل أنت متأكد أنك تريد تغيير البريد الإلكتروني للمستخدم؟ قد يحتاج المستخدم لتسجيل الدخول بالبريد الجديد.",
   newPassword: "كلمة المرور الجديدة",
   confirmNewPassword: "تأكيد كلمة المرور الجديدة",
@@ -297,7 +297,7 @@ export const AR_TRANSLATIONS: Translations = {
   allFieldsAndImagesRequired: "يرجى ملء العنوان ورفع الصورتين.",
   noTransformationsPosted: "لم يتم نشر أي تحولات بعد. كن أول من يشارك!",
   topTransformations: "أبرز التحولات",
-  interactions: "تفاعلات", // Used for sorting display if needed
+  interactions: "تفاعلات",
   postDeletedSuccess: "تم حذف المنشور بنجاح.",
   commentAddedSuccess: "تمت إضافة التعليق بنجاح.",
   commentDeletedSuccess: "تم حذف التعليق بنجاح.",

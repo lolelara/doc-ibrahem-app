@@ -403,7 +403,9 @@ const EditUserInfoModal: React.FC<EditUserInfoModalProps> = ({ isOpen, onClose, 
             setModalError(t('passwordsDoNotMatch'));
             return;
         }
-        if (email !== userToEdit.email && !window.confirm(t('confirmEmailChange'))) {
+        if (email !== userToEdit.email && window.confirm(t('confirmEmailChange'))) {
+            // Proceed with email change
+        } else if (email !== userToEdit.email) {
             // User cancelled email change prompt
             return;
         }
@@ -976,31 +978,33 @@ const PdfFormModal: React.FC<PdfFormModalProps> = ({ isOpen, onClose, pdfData, o
                         {fileError && <p className="text-xs text-red-400 mt-1">{fileError}</p>}
                     </div>
                 )}
-                {formData.id && formData.fileName && <p className="text-sm text-slate-300">{t('pdfFileName')}: {formData.fileName}</p>}
+                {formData.id && formData.fileName && <p className="text-slate-300 text-sm sm:text-base"><strong>{t('pdfFileName')}:</strong> {formData.fileName}</p>}
                 <Textarea label={t('pdfDescription')} name="description" value={formData.description || ''} onChange={handleChange} required />
                 
-                {allUsers.length > 0 && (
                 <div>
-                    <h4 className="text-sm sm:text-md font-semibold mb-1.5 sm:mb-2 text-white">{t('selectUsersToAssign')}</h4>
-                    <div className="max-h-40 overflow-y-auto space-y-1.5 sm:space-y-2 border border-slate-600 p-2 sm:p-3 rounded-md">
+                    <h4 className="text-sm sm:text-md font-semibold mb-1 sm:mb-2 text-slate-200">{t('selectUsersToAssign')}</h4>
+                    {allUsers.length === 0 && <p className="text-xs sm:text-sm text-slate-400">{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
+                    <div className="max-h-32 sm:max-h-40 overflow-y-auto space-y-1.5 sm:space-y-2 border border-slate-700 p-2 sm:p-3 rounded-md bg-slate-900 bg-opacity-50">
                         {allUsers.map(user => (
-                            <label key={user.id} className="flex items-center gap-2 text-xs sm:text-sm text-slate-200 cursor-pointer hover:bg-slate-700 p-1 rounded">
+                            <div key={user.id} className="flex items-center">
                                 <input 
-                                    type="checkbox" 
+                                    type="checkbox"
+                                    id={`user-assign-${user.id}`}
                                     checked={formData.assignedUserIds?.includes(user.id) || false}
                                     onChange={() => handleUserAssignmentChange(user.id)}
-                                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 bg-slate-600 border-slate-500 text-${THEME_COLORS.primary} focus:ring-${THEME_COLORS.primary} rounded`}
+                                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-${THEME_COLORS.primary} bg-slate-700 border-slate-600 rounded focus:ring-${THEME_COLORS.primary} focus:ring-2 focus:ring-offset-slate-800`}
                                 />
-                                {user.name} ({user.email})
-                            </label>
+                                <label htmlFor={`user-assign-${user.id}`} className="ms-2 text-xs sm:text-sm font-medium text-slate-300">{user.name} ({user.email})</label>
+                            </div>
                         ))}
                     </div>
                 </div>
-                )}
 
                 <div className="flex flex-col xs:flex-row xs:justify-end gap-2 xs:gap-3 pt-3 sm:pt-4 mt-1 sm:mt-2 border-t border-slate-700">
                     <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading} size="sm">{t('cancel')}</Button>
-                    <Button type="submit" isLoading={isLoading} disabled={isLoading} size="sm">{t('saveChanges')}</Button>
+                    <Button type="submit" isLoading={isLoading} disabled={isLoading || (fileError && !!formData.file) || (!formData.id && !formData.file)} size="sm">
+                        {formData.id ? t('saveChanges') : t('uploadPdf')}
+                    </Button>
                 </div>
             </form>
         </Modal>
@@ -1008,115 +1012,55 @@ const PdfFormModal: React.FC<PdfFormModalProps> = ({ isOpen, onClose, pdfData, o
 };
 
 
-
-// Subscription Approval
-const ApproveSubscriptionsSection: React.FC = () => {
-  const { t } = useLocalization();
-  const { currentUser } = useAuth();
-  const [requests, setRequests] = useState<SubscriptionRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [durations, setDurations] = useState<{[key: string]: string}>({});
-
-  useEffect(() => {
-    setRequests(DataService.getSubscriptionRequests().filter(r => r.status === SubscriptionStatus.PENDING));
-    setLoading(false);
-  }, []);
-  
-  const handleAction = (requestId: string, action: 'approve' | 'reject') => {
-    if(!currentUser) return;
-    const duration = parseInt(durations[requestId] || '0');
-    if (action === 'approve' && (isNaN(duration) || duration <= 0)) {
-      alert(t('daysDurationHelp', 'يرجى إدخال مدة صالحة بالأيام.'));
-      return;
-    }
-    if (action === 'approve') {
-      DataService.approveSubscription(requestId, currentUser.id, duration);
-    } else {
-      const notes = prompt(t('adminNotes', 'أدخل ملاحظات الرفض (اختياري):'));
-      DataService.rejectSubscription(requestId, currentUser.id, notes || undefined);
-    }
-    setRequests(DataService.getSubscriptionRequests().filter(r => r.status === SubscriptionStatus.PENDING));
-  };
-  
-  const handleDurationChange = (requestId: string, value: string) => {
-    setDurations(prev => ({...prev, [requestId]: value}));
-  };
-
-  if (loading) return <Spinner />;
-
-  return (
-    <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('pendingSubscriptions')}</h2>
-      {requests.length === 0 ? (
-        <p className="text-slate-400 text-center py-8">{t('noPendingSubscriptions')}</p>
-      ) : (
-        <div className="space-y-3 sm:space-y-4">
-          {requests.map(request => (
-            <Card key={request.id} className="p-3 sm:p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-end gap-3 sm:gap-4">
-                    <div className="text-xs sm:text-sm">
-                        <p className="font-semibold text-white">{request.userEmail}</p>
-                        <p className="text-slate-400">{t('plan')}: {request.planNameSnapshot}</p>
-                        <p className="text-slate-400">{t('requested')}: {new Date(request.requestDate).toLocaleDateString('ar-EG')}</p>
-                    </div>
-                    <Input
-                        label={t('setDuration', 'تحديد المدة (أيام)')}
-                        type="number"
-                        placeholder={t('durationDaysPlaceholder', 'مثال: 30')}
-                        value={durations[request.id] || ''}
-                        onChange={(e) => handleDurationChange(request.id, e.target.value)}
-                        className="w-full lg:w-auto !text-xs sm:!text-sm"
-                    />
-                     <div className="flex flex-col xs:flex-row gap-1 sm:gap-2 justify-end items-stretch lg:col-span-2 xl:col-span-2"> {/* Ensure buttons take full width on small, then adjust */}
-                        <Button onClick={() => handleAction(request.id, 'approve')} variant="secondary" size="sm" className="w-full xs:w-auto !text-xs !px-2 !py-1">{t('approve')}</Button>
-                        <Button onClick={() => handleAction(request.id, 'reject')} variant="danger" size="sm" className="w-full xs:w-auto !text-xs !px-2 !py-1">{t('reject')}</Button>
-                    </div>
-                </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Subscription Plan Management
+// Manage Subscription Plans Section
 const ManageSubscriptionPlansSection: React.FC = () => {
   const { t } = useLocalization();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<Partial<SubscriptionPlan> | null>(null);
-  
+
   useEffect(() => {
     setPlans(DataService.getSubscriptionPlans());
     setLoading(false);
   }, []);
 
+  const refreshPlans = () => {
+    setPlans(DataService.getSubscriptionPlans());
+  };
+
   const openModalForAdd = () => {
-    setCurrentPlan({ name: '', price: 0, currency: 'USD', description: '', features: [{id: 'feat_new_1', text: ''}] });
+    setCurrentPlan({ 
+        name: '', 
+        price: 0, 
+        currency: 'SAR', 
+        description: '', 
+        features: [{id: `temp_feat_${Date.now()}`, text: ''}] 
+    });
     setIsModalOpen(true);
   };
 
   const openModalForEdit = (plan: SubscriptionPlan) => {
-    setCurrentPlan(plan);
+    setCurrentPlan(JSON.parse(JSON.stringify(plan))); 
     setIsModalOpen(true);
   };
 
   const handleDelete = (planId: string) => {
-    if (window.confirm(t('confirmDeletePlan', 'هل أنت متأكد أنك تريد حذف خطة الاشتراك هذه؟ قد يكون هناك مستخدمون مشتركون بها.'))) {
+    if (window.confirm(t('confirmDeletePlan'))) {
       DataService.deleteSubscriptionPlan(planId);
-      setPlans(DataService.getSubscriptionPlans());
+      refreshPlans();
     }
   };
   
   const handleSavePlan = (planData: Partial<SubscriptionPlan>) => {
-    if (planData.id) {
-        DataService.updateSubscriptionPlan(planData as SubscriptionPlan);
-    } else {
+    const featuresToSave = (planData.features || []).filter(f => f.text.trim() !== '');
+
+    if (planData.id) { 
+        DataService.updateSubscriptionPlan({...planData, features: featuresToSave} as SubscriptionPlan);
+    } else { 
         DataService.addSubscriptionPlan(planData as Omit<SubscriptionPlan, 'id'>);
     }
-    setPlans(DataService.getSubscriptionPlans());
+    refreshPlans();
     setIsModalOpen(false);
     setCurrentPlan(null);
   };
@@ -1128,25 +1072,29 @@ const ManageSubscriptionPlansSection: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
         <h2 className="text-xl sm:text-2xl font-semibold text-white">{t('manageSubscriptionPlans')}</h2>
         <Button onClick={openModalForAdd} variant="primary" size="md">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 me-1 sm:me-2">
-            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-           </svg>
-           {t('addSubscriptionPlan')}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 me-1 sm:me-2">
+               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+            {t('addSubscriptionPlan')}
         </Button>
       </div>
-      {plans.length === 0 && <p className="text-slate-400 text-center py-8">{t('noPlansDefined')}</p>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      {plans.length === 0 && <p className="text-slate-400 text-center py-8">{t('noPlansDefined', 'لا توجد خطط اشتراك معرفة حاليًا.')}</p>}
+      <div className="space-y-3 sm:space-y-4">
         {plans.map(plan => (
-          <Card key={plan.id} className="p-3 sm:p-4 flex flex-col">
-            <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary}`}>{plan.name}</h3>
-            <p className="text-lg sm:text-xl font-bold my-1">{plan.price} <span className="text-xs text-slate-400">{plan.currency}</span></p>
-            <p className="text-xs sm:text-sm text-slate-300 mb-2">{plan.description}</p>
-            <ul className="list-disc list-inside text-slate-200 text-xs space-y-0.5 mb-3 flex-grow">
-                {plan.features.map(f => <li key={f.id}>{f.text}</li>)}
-            </ul>
-            <div className="mt-3 sm:mt-4 flex gap-1 sm:gap-2 border-t border-slate-700 pt-2 sm:pt-3">
-                <Button onClick={() => openModalForEdit(plan)} size="sm" variant="secondary" className="!text-xs !px-2 !py-1">{t('edit')}</Button>
-                <Button onClick={() => handleDelete(plan.id)} size="sm" variant="danger" className="!text-xs !px-2 !py-1">{t('delete')}</Button>
+          <Card key={plan.id} className="p-3 sm:p-4 hover:border-sky-500">
+            <div className="flex flex-col md:flex-row justify-between md:items-start gap-2 md:gap-4">
+                <div className="flex-grow">
+                    <h3 className={`text-lg sm:text-xl font-semibold text-${THEME_COLORS.primary}`}>{plan.name}</h3>
+                    <p className="text-md sm:text-lg text-white">{plan.price} {plan.currency}</p>
+                    <p className="text-xs sm:text-sm text-slate-300 mt-1">{plan.description}</p>
+                    <ul className="list-disc list-inside mt-1.5 sm:mt-2 text-xs sm:text-sm text-slate-400 space-y-1">
+                        {plan.features.map(feature => <li key={feature.id} className="flex items-start"><svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lime-400 me-1.5 sm:me-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>{feature.text}</li>)}
+                    </ul>
+                </div>
+                <div className="flex gap-1 sm:gap-2 mt-2 md:mt-0 self-start md:self-center flex-shrink-0">
+                    <Button onClick={() => openModalForEdit(plan)} size="sm" variant="secondary" className="!text-xs !px-2 !py-1">{t('edit')}</Button>
+                    <Button onClick={() => handleDelete(plan.id)} size="sm" variant="danger" className="!text-xs !px-2 !py-1">{t('delete')}</Button>
+                </div>
             </div>
           </Card>
         ))}
@@ -1169,32 +1117,39 @@ interface SubscriptionPlanFormModalProps {
     planData: Partial<SubscriptionPlan>;
     onSave: (data: Partial<SubscriptionPlan>) => void;
 }
-
 const SubscriptionPlanFormModal: React.FC<SubscriptionPlanFormModalProps> = ({ isOpen, onClose, planData, onSave }) => {
     const { t } = useLocalization();
-    const [formData, setFormData] = useState<Partial<SubscriptionPlan>>(planData);
+    const [formData, setFormData] = useState<Partial<SubscriptionPlan>>(
+        planData.id ? JSON.parse(JSON.stringify(planData)) : { ...planData, features: planData.features?.length ? planData.features : [{id: `new_feat_${Date.now()}`, text: ''}] }
+    );
     
-    useEffect(() => setFormData(planData), [planData]);
+    useEffect(() => {
+      setFormData(planData.id ? JSON.parse(JSON.stringify(planData)) : { ...planData, features: planData.features?.length ? planData.features : [{id: `new_feat_${Date.now()}`, text: ''}] });
+    }, [planData]);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: name === 'price' ? parseFloat(value) || 0 : value }));
     };
-    
-    const handleFeatureChange = (index: number, text: string) => {
+
+    const handleFeatureChange = (index: number, value: string) => {
         const newFeatures = [...(formData.features || [])];
-        newFeatures[index] = {...newFeatures[index], text};
+        newFeatures[index] = { ...newFeatures[index], text: value }; 
+        if (!newFeatures[index].id) newFeatures[index].id = `new_feat_edit_${Date.now()}_${index}`;
         setFormData(prev => ({ ...prev, features: newFeatures }));
     };
 
     const addFeatureField = () => {
-        const newId = `feat_${Date.now()}_${(formData.features?.length || 0)}`;
-        setFormData(prev => ({ ...prev, features: [...(prev.features || []), {id: newId, text: ''}] }));
+        setFormData(prev => ({ 
+            ...prev, 
+            features: [...(prev.features || []), {id: `new_feat_${Date.now()}_${(prev.features || []).length}`, text: ''}] 
+        }));
     };
-    
-    const removeFeatureField = (index: number) => {
-        setFormData(prev => ({ ...prev, features: (prev.features || []).filter((_, i) => i !== index) }));
+
+    const removeFeatureField = (idToRemove: string) => {
+        setFormData(prev => ({ ...prev, features: (prev.features || []).filter(f => f.id !== idToRemove) }));
     };
+
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -1203,25 +1158,32 @@ const SubscriptionPlanFormModal: React.FC<SubscriptionPlanFormModalProps> = ({ i
     
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={formData.id ? t('editSubscriptionPlan') : t('addSubscriptionPlan')} size="lg">
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 max-h-[75vh] overflow-y-auto p-1">
                 <Input label={t('planName')} name="name" value={formData.name || ''} onChange={handleChange} required />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <Input label={t('planPrice')} name="price" type="number" step="0.01" value={formData.price || ''} onChange={handleChange} placeholder={t('pricePlaceholder', 'مثال: 29.99')} required />
-                    <Input label={t('planCurrency')} name="currency" value={formData.currency || ''} onChange={handleChange} placeholder={t('currencyPlaceholder', 'مثال: USD أو SAR')} required />
+                    <Input label={t('planPrice')} name="price" type="number" step="0.01" value={formData.price || ''} onChange={handleChange} required placeholder={t('pricePlaceholder')} />
+                    <Input label={t('planCurrency')} name="currency" value={formData.currency || 'SAR'} onChange={handleChange} required placeholder={t('currencyPlaceholder')} />
                 </div>
                 <Textarea label={t('planDescription')} name="description" value={formData.description || ''} onChange={handleChange} required />
                 
                 <div>
                     <h4 className="text-sm sm:text-md font-semibold mb-1">{t('planFeatures')}</h4>
                     {(formData.features || []).map((feature, index) => (
-                        <div key={feature.id || index} className="flex gap-1 sm:gap-2 mb-1 sm:mb-2 items-center">
+                        <div key={feature.id || `feature-${index}`} className="flex gap-1 sm:gap-2 mb-1 sm:mb-2 items-center">
                             <Input 
-                                placeholder={t('featureText', 'نص الميزة')} 
+                                placeholder={t('featureText')} 
                                 value={feature.text} 
                                 onChange={e => handleFeatureChange(index, e.target.value)} 
                                 className="flex-grow !text-xs sm:!text-sm"
                             />
-                            <Button type="button" variant="danger" size="sm" onClick={() => removeFeatureField(index)} disabled={(formData.features?.length || 0) <= 1} className="!px-2 !py-1">X</Button>
+                            <Button 
+                                type="button" 
+                                variant="danger" 
+                                size="sm" 
+                                onClick={() => removeFeatureField(feature.id)}
+                                disabled={(formData.features?.length || 0) <= 1 && feature.text === ''}
+                                className="!px-2 !py-1"
+                            >X</Button>
                         </div>
                     ))}
                     <Button type="button" variant="ghost" size="sm" onClick={addFeatureField} className="!text-xs !px-2 !py-1">{t('addFeature')}</Button>
@@ -1236,52 +1198,138 @@ const SubscriptionPlanFormModal: React.FC<SubscriptionPlanFormModalProps> = ({ i
     );
 };
 
-// Send Global Notification Section
-const SendGlobalNotificationSection: React.FC = () => {
-  const { t } = useLocalization();
-  const { currentUser, isSiteManager } = useAuth();
-  const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState({type: '', message: ''});
 
-  const handleSendNotification = () => {
-    if (!currentUser || !message.trim()) return;
-    setIsLoading(true);
-    setFeedback({type: '', message: ''});
-    try {
-      DataService.addGlobalNotification(message, currentUser.id);
-      setMessage('');
-      setFeedback({type: 'success', message: t('notificationSentSuccess')});
-    } catch (error: any) {
-      setFeedback({type: 'error', message: error.message || t('errorOccurred')});
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
-    }
+const ApproveSubscriptionsSection: React.FC = () => {
+  const { t } = useLocalization();
+  const { currentUser } = useAuth();
+  const [requests, setRequests] = useState<SubscriptionRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [durationDays, setDurationDays] = useState<{ [requestId: string]: number }>({});
+  const [allPlans, setAllPlans] = useState<SubscriptionPlan[]>([]);
+
+
+  useEffect(() => {
+    setLoading(true);
+    setRequests(DataService.getSubscriptionRequests().filter(r => r.status === SubscriptionStatus.PENDING));
+    setAllPlans(DataService.getSubscriptionPlans());
+    setLoading(false);
+  }, []);
+  
+  const refreshRequests = () => {
+     setRequests(DataService.getSubscriptionRequests().filter(r => r.status === SubscriptionStatus.PENDING));
+  }
+
+  const handleApprove = (requestId: string) => {
+    if (!currentUser) return;
+    const days = durationDays[requestId] || 30; 
+    DataService.approveSubscription(requestId, currentUser.id, days);
+    refreshRequests();
+  };
+
+  const handleReject = (requestId: string) => {
+     if (!currentUser) return;
+    DataService.rejectSubscription(requestId, currentUser.id, t('rejectedByAdmin', 'تم الرفض بواسطة الإدارة'));
+    refreshRequests();
   };
   
-  if (!isSiteManager) return <p>{t('adminAccessOnly')}</p>;
+  const handleDurationChange = (requestId: string, value: string) => {
+    setDurationDays(prev => ({...prev, [requestId]: parseInt(value) || 0 }));
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div>
+      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('pendingSubscriptions')}</h2>
+      {requests.length === 0 ? (
+        <p className="text-slate-400 py-8 text-center">{t('noPendingSubscriptions')}</p>
+      ) : (
+        <div className="space-y-3 sm:space-y-4">
+          {requests.map(req => {
+            return (
+              <Card key={req.id} className="p-3 sm:p-4 hover:border-sky-500">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 items-end">
+                    <div className="text-xs sm:text-sm"><strong className="text-slate-300">{t('user')}:</strong> <span className="text-white break-all">{req.userEmail}</span></div>
+                    <div className="text-xs sm:text-sm"><strong className="text-slate-300">{t('plan')}:</strong> <span className="text-white">{req.planNameSnapshot}</span> (<span className="text-yellow-400">{t('requested', 'مطلوب')}</span>)</div>
+                    <div className="flex-grow">
+                        <Input 
+                            type="number" 
+                            label={t('setDuration')}
+                            value={durationDays[req.id] || ''} 
+                            onChange={(e) => handleDurationChange(req.id, e.target.value)}
+                            min="1"
+                            placeholder={t('durationDaysPlaceholder')}
+                            aria-describedby={`duration-help-${req.id}`}
+                            className="w-full" 
+                        />
+                         <small id={`duration-help-${req.id}`} className="text-xs text-slate-400 mt-1 hidden">{t('daysDurationHelp', 'أدخل عدد أيام صلاحية الاشتراك.')}</small>
+                    </div>
+                    <div className="flex flex-col xs:flex-row gap-1 sm:gap-2 xs:justify-end self-center sm:self-end">
+                        <Button onClick={() => handleApprove(req.id)} size="sm" variant="primary" disabled={!durationDays[req.id] || durationDays[req.id] <=0 } className="!text-xs !px-2 !py-1 w-full xs:w-auto">{t('approve')}</Button>
+                        <Button onClick={() => handleReject(req.id)} size="sm" variant="danger" className="!text-xs !px-2 !py-1 w-full xs:w-auto">{t('reject')}</Button>
+                    </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+const SendGlobalNotificationSection: React.FC = () => {
+  const { t } = useLocalization();
+  const { currentUser, isSiteManager, refreshNotifications } = useAuth();
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
+
+  if (!isSiteManager || !currentUser) {
+    return <p>{t('adminAccessOnly')}</p>;
+  }
+
+  const handleSendNotification = () => {
+    if (!message.trim()) {
+      setFeedback({ type: 'error', message: t('fieldRequired') });
+      return;
+    }
+    setIsLoading(true);
+    setFeedback({ type: '', message: '' });
+    try {
+      DataService.addGlobalNotification(message, currentUser.id);
+      setFeedback({ type: 'success', message: t('notificationSentSuccess') });
+      setMessage('');
+      refreshNotifications(); 
+    } catch (error: any) {
+      setFeedback({ type: 'error', message: error.message || t('errorOccurred') });
+    }
+    setIsLoading(false);
+    setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
+  };
 
   return (
     <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('sendGlobalNotification')}</h2>
-      {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
-      <Textarea
-        label={t('notificationMessage')}
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        rows={4}
-        required
-      />
-      <Button 
-        onClick={handleSendNotification} 
-        isLoading={isLoading} 
-        disabled={isLoading || !message.trim()} 
-        className="mt-3 sm:mt-4"
-        size="md"
-      >
-        {t('sendToAllUsers')}
-      </Button>
+      {feedback.message && (
+        <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>
+          {feedback.message}
+        </p>
+      )}
+      <div className="space-y-3 sm:space-y-4">
+        <Textarea
+          label={t('notificationMessage')}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={t('enterYourMessage')}
+          rows={5}
+          required
+        />
+        <Button onClick={handleSendNotification} isLoading={isLoading} variant="primary" size="md">
+          {t('sendToAllUsers')}
+        </Button>
+      </div>
     </div>
   );
 };
@@ -1293,245 +1341,173 @@ const ManageTransformationsSection: React.FC = () => {
     const [posts, setPosts] = useState<TransformationPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewingPost, setViewingPost] = useState<TransformationPost | null>(null);
+    const [feedback, setFeedback] = useState({type: '', message: ''});
 
     const fetchPosts = () => {
         setPosts(DataService.getTransformationPosts().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     };
 
     useEffect(() => {
+        setLoading(true);
         fetchPosts();
         setLoading(false);
     }, []);
-    
-    const handlePostDeleted = (postId: string) => {
-        if (currentUser && (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SITE_MANAGER)) {
-            DataService.deleteTransformationPost(postId, currentUser.id);
-            fetchPosts();
-            if (viewingPost?.id === postId) {
-                setViewingPost(null);
+
+    const showFeedback = (type: 'success' | 'error', messageKey: string) => {
+        setFeedback({type, message: t(messageKey)});
+        setTimeout(() => setFeedback({ type: '', message: '' }), 3000);
+    };
+
+    const handleDeletePost = (postId: string) => {
+        if (!currentUser || (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SITE_MANAGER)) return;
+        if (window.confirm(t('confirmDeletePost'))) {
+            try {
+                DataService.deleteTransformationPost(postId, currentUser.id);
+                fetchPosts();
+                showFeedback('success', 'postDeletedSuccess');
+            } catch (error: any) {
+                showFeedback('error', error.message || 'errorOccurred');
             }
         }
     };
     
-    const handleCommentAction = () => { // For admin deleting comments
-        fetchPosts(); // Refresh main list if comment count changed
-        if (viewingPost) { // Refresh detail modal
+    const handleCommentAction = () => { // For refreshing post data (comment count)
+        fetchPosts(); 
+        if(viewingPost) { // if detail modal is open, refresh its content
             const updatedPost = DataService.getTransformationPostById(viewingPost.id);
             setViewingPost(updatedPost || null);
         }
     }
 
-    if (loading) return <Spinner />;
+    if (loading && !viewingPost) return <Spinner />;
 
     return (
         <div>
             <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('manageTransformations')}</h2>
-            {posts.length === 0 && <p className="text-slate-400 text-center py-8">{t('noTransformationsPosted')}</p>}
-            <div className="space-y-4">
-                {posts.map(post => (
-                    <Card key={post.id} className="p-3 sm:p-4">
-                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                            <div className="grid grid-cols-2 gap-1 sm:gap-2 w-full sm:w-40 md:w-48 flex-shrink-0">
-                                <img src={post.beforeImageUrl} alt="Before" className="w-full h-16 sm:h-20 md:h-24 object-cover rounded" />
-                                <img src={post.afterImageUrl} alt="After" className="w-full h-16 sm:h-20 md:h-24 object-cover rounded" />
+            {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
+            
+            {posts.length === 0 ? (
+                <p className="text-slate-400 text-center py-8">{t('noTransformationsPosted')}</p>
+            ) : (
+                <div className="space-y-3 sm:space-y-4">
+                    {posts.map(post => (
+                        <Card key={post.id} className="p-3 sm:p-4">
+                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                                <div className="flex-shrink-0 grid grid-cols-2 gap-1 sm:gap-2 w-full sm:w-40 md:w-48">
+                                    <img src={post.beforeImageUrl} alt={t('beforePhoto')} className="w-full h-20 sm:h-24 object-cover rounded" />
+                                    <img src={post.afterImageUrl} alt={t('afterPhoto')} className="w-full h-20 sm:h-24 object-cover rounded" />
+                                </div>
+                                <div className="flex-grow">
+                                    <h3 className="text-md sm:text-lg font-semibold text-sky-400 break-all">{post.title}</h3>
+                                    <p className="text-xs sm:text-sm text-slate-300">
+                                        {t('user')}: {post.userName} ({post.userId.substring(0,8)}...)
+                                    </p>
+                                    <p className="text-xs text-slate-400">
+                                        {new Date(post.createdAt).toLocaleDateString('ar-EG')} - {post.likes.length} {t('likes')} / {post.commentsCount} {t('comments')}
+                                    </p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 items-start sm:items-center mt-2 sm:mt-0">
+                                    <Button onClick={() => setViewingPost(post)} variant="ghost" size="sm" className="!text-xs !px-2 !py-1">
+                                        {t('viewPostDetails')}
+                                    </Button>
+                                    <Button onClick={() => handleDeletePost(post.id)} variant="danger" size="sm" className="!text-xs !px-2 !py-1">
+                                        {t('deletePost')}
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex-grow">
-                                <h3 className="text-md sm:text-lg font-semibold text-sky-400">{post.title}</h3>
-                                <p className="text-xs text-slate-300">{t('user')}: {post.userName} ({post.userId.substring(0,6)}...)</p>
-                                <p className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleDateString('ar-EG')}</p>
-                                <p className="text-xs text-slate-400">{t('likes')}: {post.likes.length}, {t('comments')}: {post.commentsCount}</p>
-                            </div>
-                            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 mt-2 sm:mt-0 flex-shrink-0 self-start sm:self-center">
-                                <Button onClick={() => setViewingPost(post)} size="xs" variant="ghost">{t('viewPostDetails')}</Button>
-                                <Button onClick={() => {
-                                    if(window.confirm(t('confirmDeletePost'))) { handlePostDeleted(post.id); }
-                                }} size="xs" variant="danger">{t('deletePost')}</Button>
-                            </div>
-                        </div>
-                    </Card>
-                ))}
-            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
             {viewingPost && currentUser && (
-                 <AdminViewTransformationPostModal
+                <AdminViewTransformationPostModal
                     isOpen={!!viewingPost}
                     onClose={() => setViewingPost(null)}
                     post={viewingPost}
-                    currentUserId={currentUser.id}
-                    onCommentAction={handleCommentAction} 
-                    isAdmin={currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SITE_MANAGER}
+                    currentAdminId={currentUser.id}
+                    onCommentDeleted={handleCommentAction}
                 />
             )}
         </div>
     );
 };
 
-interface AdminViewTransformationPostModalProps extends Omit<ViewTransformationPostModalProps, 'onLikeUnlike'> {
-    // Admin modal might not need onLikeUnlike, or it can be passed if needed
+interface AdminViewTransformationPostModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    post: TransformationPost;
+    currentAdminId: string;
+    onCommentDeleted: () => void;
 }
-// Re-using ViewTransformationPostModal but from an admin context.
-// The ViewTransformationPostModal needs to be slightly adapted or a similar one created for admin.
-// For simplicity, I'll assume ViewTransformationPostModal can handle being called by an admin.
-// (The original ViewTransformationPostModal in TransformationsPage.tsx already takes an isAdmin prop)
+const AdminViewTransformationPostModal: React.FC<AdminViewTransformationPostModalProps> = ({ isOpen, onClose, post, currentAdminId, onCommentDeleted }) => {
+    const { t } = useLocalization();
+    const [comments, setComments] = useState<TransformationComment[]>([]);
 
-const AdminViewTransformationPostModal: React.FC<AdminViewTransformationPostModalProps> = ({ isOpen, onClose, post, currentUserId, onCommentAction, isAdmin }) => {
-  const { t } = useLocalization();
-  const { currentUser } = useAuth(); // Current logged in admin
-  const [comments, setComments] = useState<TransformationComment[]>([]);
-  
-  useEffect(() => {
-    if (isOpen) {
-      setComments(DataService.getCommentsForPost(post.id));
-    }
-  }, [isOpen, post.id, post.commentsCount]);
+    useEffect(() => {
+        if (isOpen) {
+            setComments(DataService.getCommentsForPost(post.id));
+        }
+    }, [isOpen, post.id]);
 
-  const handleDeleteComment = (commentId: string) => {
-    if (!currentUser || !isAdmin) return; 
-    if(window.confirm(t('confirmDeleteComment', 'هل أنت متأكد أنك تريد حذف هذا التعليق؟'))) {
-        DataService.deleteTransformationComment(commentId, currentUser.id);
-        setComments(DataService.getCommentsForPost(post.id)); 
-        onCommentAction(); 
-    }
-  }
+    const handleDeleteComment = (commentId: string) => {
+        if(window.confirm(t('confirmDeleteComment', 'هل أنت متأكد أنك تريد حذف هذا التعليق؟'))) {
+            try {
+                DataService.deleteTransformationComment(commentId, currentAdminId);
+                setComments(DataService.getCommentsForPost(post.id)); // Refresh comments list
+                onCommentDeleted(); // Trigger parent re-fetch for comment count
+            } catch (error: any) {
+                alert(error.message || t('errorOccurred'));
+            }
+        }
+    };
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`${t('viewPostDetails')}: ${post.title.substring(0,30)}...`} size="2xl">
-      <div className="max-h-[80vh] overflow-y-auto p-1">
-        <div className="flex items-center mb-3 sm:mb-4">
-            {post.userProfileImage ? (
-                <img src={post.userProfileImage} alt={post.userName} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover me-3 sm:me-4" />
-            ) : (
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-${THEME_COLORS.primary} flex items-center justify-center text-white font-semibold text-lg sm:text-xl me-3 sm:me-4`}>
-                {post.userName.charAt(0).toUpperCase()}
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`${t('postDeletedSuccess', 'تفاصيل المنشور')}: ${post.title}`} size="2xl">
+           <div className="max-h-[80vh] overflow-y-auto p-1">
+                <p className="text-slate-300 text-sm sm:text-base mb-3 sm:mb-4 whitespace-pre-line">{post.title}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4">
+                    <div>
+                        <h4 className="text-sm font-semibold text-slate-400 mb-1">{t('beforePhoto', 'الصورة قبل')}</h4>
+                        <img src={post.beforeImageUrl} alt={t('beforePhoto', 'الصورة قبل')} className="w-full rounded-lg shadow-md object-contain max-h-64 sm:max-h-80" />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-semibold text-slate-400 mb-1">{t('afterPhoto', 'الصورة بعد')}</h4>
+                        <img src={post.afterImageUrl} alt={t('afterPhoto', 'الصورة بعد')} className="w-full rounded-lg shadow-md object-contain max-h-64 sm:max-h-80" />
+                    </div>
                 </div>
-            )}
-            <div>
-                <p className="text-md sm:text-lg font-semibold text-white">{post.userName}</p>
-                <p className="text-xs sm:text-sm text-slate-400">{new Date(post.createdAt).toLocaleString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' })}</p>
+                <p className="text-xs text-slate-400 mb-2"> {t('user')}: {post.userName} | {post.likes.length} {t('likes')} | {post.commentsCount} {t('comments')}</p>
+
+                <h4 className="text-md sm:text-lg font-semibold text-white mb-2 sm:mb-3 border-t border-slate-700 pt-3">{t('comments', 'التعليقات')}</h4>
+                <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-60 overflow-y-auto pr-1">
+                    {comments.length === 0 && <p className="text-slate-400 text-xs sm:text-sm">{t('noCommentsYet', 'لا توجد تعليقات بعد.')}</p>}
+                    {comments.map(comment => (
+                        <div key={comment.id} className={`p-2 sm:p-2.5 rounded-lg bg-slate-700`}>
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center mb-1">
+                                    {comment.userProfileImage ? (
+                                        <img src={comment.userProfileImage} alt={comment.userName} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover me-1.5 sm:me-2" />
+                                    ) : (
+                                        <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-${THEME_COLORS.secondary} flex items-center justify-center text-black font-semibold text-xs me-1.5 sm:me-2`}>
+                                            {comment.userName.charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-xs sm:text-sm font-semibold text-slate-200">{comment.userName}</p>
+                                        <p className="text-xs text-slate-500">{new Date(comment.createdAt).toLocaleDateString('ar-EG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>
+                                    </div>
+                                </div>
+                                <Button onClick={() => handleDeleteComment(comment.id)} variant="danger" size="xs" className="!p-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 sm:w-3.5 sm:h-3.5"><path fillRule="evenodd" d="M5 3.25V4H2.75a.75.75 0 000 1.5h.31l.421 8.424A2.25 2.25 0 005.731 16h4.538a2.25 2.25 0 002.25-2.076L12.941 5.5h.31a.75.75 0 000-1.5H11v-.75A2.25 2.25 0 008.75 1h-1.5A2.25 2.25 0 005 3.25zm2.25-.75c0-.414.336-.75.75-.75h1.5a.75.75 0 01.75.75V4h-3V2.5zM7.25 7a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 017.25 7zM10 7.75a.75.75 0 00-1.5 0v4.5a.75.75 0 001.5 0v-4.5z" clipRule="evenodd" /></svg>
+                                </Button>
+                            </div>
+                            <p className="text-slate-300 text-xs sm:text-sm ps-8 sm:ps-9 whitespace-pre-line">{comment.text}</p>
+                        </div>
+                    ))}
+                </div>
             </div>
-        </div>
-        <p className="text-slate-300 text-sm sm:text-base mb-3 sm:mb-4 whitespace-pre-line">{post.title}</p>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4">
-          <div>
-            <h4 className="text-sm font-semibold text-slate-400 mb-1">{t('beforePhoto', 'الصورة قبل')}</h4>
-            <img src={post.beforeImageUrl} alt={t('beforePhoto', 'الصورة قبل')} className="w-full rounded-lg shadow-md object-contain max-h-64 sm:max-h-80" />
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-400 mb-1">{t('afterPhoto', 'الصورة بعد')}</h4>
-            <img src={post.afterImageUrl} alt={t('afterPhoto', 'الصورة بعد')} className="w-full rounded-lg shadow-md object-contain max-h-64 sm:max-h-80" />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 sm:gap-4 py-2 sm:py-3 border-y border-slate-700 mb-3 sm:mb-4">
-            <span className={`text-xs sm:text-sm text-${THEME_COLORS.accent}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 inline-block">
-                <path d="M9.653 16.915l-.005-.003-.019-.01a20.759 20.759 0 01-1.162-.682 22.045 22.045 0 01-2.582-1.9C4.045 12.733 2 10.352 2 7.5a4.5 4.5 0 018-2.828A4.5 4.5 0 0118 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 01-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 01-.69.001l-.002-.001z" />
-                </svg>
-                <span className="ms-1 sm:ms-1.5">{post.likes.length} {t('likes', 'إعجابات')}</span>
-            </span>
-          <span className="text-slate-400 text-xs sm:text-sm">{post.commentsCount} {t('comments', 'تعليقات')}</span>
-        </div>
-
-        {/* Comments List */}
-        <h4 className="text-md sm:text-lg font-semibold text-white mb-2 sm:mb-3">{t('comments', 'التعليقات')}</h4>
-        <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4 max-h-48 sm:max-h-60 overflow-y-auto pr-1">
-          {comments.length === 0 && <p className="text-slate-400 text-xs sm:text-sm">{t('noCommentsYet', 'لا توجد تعليقات بعد.')}</p>}
-          {comments.map(comment => (
-            <CommentItem key={comment.id} comment={comment} currentUserId={currentUserId} isAdmin={isAdmin} onDeleteComment={handleDeleteComment} />
-          ))}
-        </div>
-      </div>
-    </Modal>
-  );
+        </Modal>
+    );
 };
 
-// Re-using CommentItem from TransformationsPage as it already has isAdmin check
-interface CommentItemProps {
-  comment: TransformationComment;
-  currentUserId: string;
-  isAdmin?: boolean;
-  onDeleteComment: (commentId: string) => void;
-}
-
-const CommentItem: React.FC<CommentItemProps> = ({ comment, currentUserId, isAdmin, onDeleteComment }) => {
-  const { t } = useLocalization();
-  const canDelete = isAdmin || comment.userId === currentUserId; // Admin or owner can delete
-
-  return (
-    <div className={`p-2 sm:p-2.5 rounded-lg ${comment.userId === currentUserId ? 'bg-sky-800 bg-opacity-40' : 'bg-slate-700'}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-center mb-1">
-          {comment.userProfileImage ? (
-            <img src={comment.userProfileImage} alt={comment.userName} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover me-1.5 sm:me-2" />
-          ) : (
-             <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-${THEME_COLORS.secondary} flex items-center justify-center text-black font-semibold text-xs me-1.5 sm:me-2`}>
-                {comment.userName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div>
-            <p className="text-xs sm:text-sm font-semibold text-slate-200">{comment.userName}</p>
-            <p className="text-xs text-slate-500">{new Date(comment.createdAt).toLocaleDateString('ar-EG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>
-          </div>
-        </div>
-        {canDelete && ( 
-          <Button onClick={() => onDeleteComment(comment.id)} variant="danger" size="xs" className="!p-1">
-             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 sm:w-3.5 sm:h-3.5"><path fillRule="evenodd" d="M5 3.25V4H2.75a.75.75 0 000 1.5h.31l.421 8.424A2.25 2.25 0 005.731 16h4.538a2.25 2.25 0 002.25-2.076L12.941 5.5h.31a.75.75 0 000-1.5H11v-.75A2.25 2.25 0 008.75 1h-1.5A2.25 2.25 0 005 3.25zm2.25-.75c0-.414.336-.75.75-.75h1.5a.75.75 0 01.75.75V4h-3V2.5zM7.25 7a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 017.25 7zM10 7.75a.75.75 0 00-1.5 0v4.5a.75.75 0 001.5 0v-4.5z" clipRule="evenodd" /></svg>
-          </Button>
-        )}
-      </div>
-      <p className="text-slate-300 text-xs sm:text-sm ps-8 sm:ps-9 whitespace-pre-line">{comment.text}</p>
-    </div>
-  );
-};
-// Added for ViewTransformationPostModalProps reuse
-interface ViewTransformationPostModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  post: TransformationPost;
-  currentUserId: string;
-  onCommentAction: () => void; 
-  onLikeUnlike: () => void; // Kept for potential direct like within Admin view
-  isAdmin?: boolean;
-}
 
 export default AdminPage;
-// Missing closing } for PdfFormModal and its closing ; are inside the cdata
-// This is a common issue with CDATA. Let's assume the actual file is fine.
-// I will ensure PdfFormModal is correctly structured outside the CDATA context.
-
-// Corrected structure for PdfFormModal, assuming the content up to the final div is correct.
-// The final part of PdfFormModal from your provided files:
-// ... (previous content of PdfFormModal) ...
-//                 {formData.id && formData.fileName && <p className="text-sm text-slate-300">{t('pdfFileName')}: {formData.fileName}</p>}
-//                 <Textarea label={t('pdfDescription')} name="description" value={formData.description || ''} onChange={handleChange} required />
-                
-//                 {allUsers.length > 0 && (
-//                 <div>
-//                     <h4 className="text-sm sm:text-md font-semibold mb-1.5 sm:mb-2 text-white">{t('selectUsersToAssign')}</h4>
-//                     <div className="max-h-40 overflow-y-auto space-y-1.5 sm:space-y-2 border border-slate-600 p-2 sm:p-3 rounded-md">
-//                         {allUsers.map(user => (
-//                             <label key={user.id} className="flex items-center gap-2 text-xs sm:text-sm text-slate-200 cursor-pointer hover:bg-slate-700 p-1 rounded">
-//                                 <input 
-//                                     type="checkbox" 
-//                                     checked={formData.assignedUserIds?.includes(user.id) || false}
-//                                     onChange={() => handleUserAssignmentChange(user.id)}
-//                                     className={`w-3.5 h-3.5 sm:w-4 sm:h-4 bg-slate-600 border-slate-500 text-${THEME_COLORS.primary} focus:ring-${THEME_COLORS.primary} rounded`}
-//                                 />
-//                                 {user.name} ({user.email})
-//                             </label>
-//                         ))}
-//                     </div>
-//                 </div>
-//                 )}
-
-//                 <div className="flex flex-col xs:flex-row xs:justify-end gap-2 xs:gap-3 pt-3 sm:pt-4 mt-1 sm:mt-2 border-t border-slate-700">
-//                     <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading} size="sm">{t('cancel')}</Button>
-//                     <Button type="submit" isLoading={isLoading} disabled={isLoading} size="sm">{t('saveChanges')}</Button>
-//                 </div>
-//             </form>
-//         </Modal>
-//     );
-// };
-// // ... rest of AdminPage.tsx, including export default AdminPage;
-// This was to show where the fix might be needed if the CDATA was incomplete. The provided file seems to have it structured okay.
-// The main issue is usually the default export for AdminPage itself.
