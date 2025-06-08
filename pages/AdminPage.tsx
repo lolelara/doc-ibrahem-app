@@ -5,7 +5,7 @@ import { useAuth, useLocalization } from '../App';
 import { Button, Input, Card, Spinner, Modal, Textarea, LoadingOverlay } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
 import { User, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserRole, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature, TransformationPost, TransformationComment, ExternalResourceLink, ExternalResourceCategory } from '../types';
-import { THEME_COLORS, ADMIN_EMAIL, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST, EXTERNAL_RESOURCE_CATEGORIES } from '../constants';
+import { THEME_COLORS, ADMIN_EMAIL, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST, EXTERNAL_RESOURCE_CATEGORIES, TRANSFORMATION_IMAGE_MAX_SIZE_BYTES } from '../constants';
 
 enum AdminSection {
   Users = "users",
@@ -34,9 +34,10 @@ const AdminPage: React.FC = () => {
       onClick={() => {
         setActiveSection(section);
         if (onClick) onClick();
+        setIsSidebarOpen(false); // Close sidebar on item click for mobile
       }}
       className={`flex items-center gap-2 sm:gap-3 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ease-in-out transform hover:scale-105 w-full text-right rtl:text-left
-        ${activeSection === section ? `bg-${THEME_COLORS.primary} text-white shadow-lg` : `text-slate-300 hover:bg-slate-700 hover:text-white`}`}
+        ${activeSection === section ? `bg-${THEME_COLORS.primary} text-white shadow-lg` : `text-${THEME_COLORS.textSecondary} hover:bg-slate-700 hover:text-${THEME_COLORS.textPrimary}`}`}
     >
       {icon}
       {label}
@@ -57,9 +58,9 @@ const AdminPage: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row gap-4 sm:gap-6 lg:gap-8 min-h-[calc(100vh-12rem)]">
-      <div className="md:hidden p-2 sticky top-16 bg-slate-800 z-30 shadow-md">
+      <div className={`md:hidden p-2 sticky top-16 bg-${THEME_COLORS.surface} z-30 shadow-md`}>
         <Button onClick={() => setIsSidebarOpen(!isSidebarOpen)} variant="ghost" className="w-full">
-          {isSidebarOpen ? 'إخفاء القائمة' : t('adminNavigation', 'لوحة التحكم')}
+          {isSidebarOpen ? t('hideMenu', 'إخفاء القائمة') : t('adminNavigation', 'لوحة التحكم')}
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 ms-2">
             <path strokeLinecap="round" strokeLinejoin="round" d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"} />
           </svg>
@@ -72,19 +73,19 @@ const AdminPage: React.FC = () => {
         bg-${THEME_COLORS.surface} p-3 sm:p-5 rounded-xl shadow-2xl space-y-2 sm:space-y-3 
         md:self-start md:sticky md:top-24 transition-all duration-300 ease-in-out mb-4 md:mb-0
       `}>
-        <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4 border-b border-slate-700 pb-2 sm:pb-3">{t('adminNavigation', 'لوحة التحكم')}</h2>
-        <NavItem section={AdminSection.Subscriptions} label={t('approveSubscriptions')} icon={NavIcons.subscriptions} onClick={() => setIsSidebarOpen(false)} />
-        <NavItem section={AdminSection.SubscriptionPlans} label={t('manageSubscriptionPlans')} icon={NavIcons.plans} onClick={() => setIsSidebarOpen(false)} />
+        <h2 className={`text-lg sm:text-xl font-bold text-${THEME_COLORS.textPrimary} mb-3 sm:mb-4 border-b border-slate-700 pb-2 sm:pb-3`}>{t('adminNavigation', 'لوحة التحكم')}</h2>
+        <NavItem section={AdminSection.Subscriptions} label={t('approveSubscriptions')} icon={NavIcons.subscriptions} />
+        <NavItem section={AdminSection.SubscriptionPlans} label={t('manageSubscriptionPlans')} icon={NavIcons.plans} />
         {isSiteManager && ( 
-            <NavItem section={AdminSection.Users} label={t('manageUsers')} icon={NavIcons.users} onClick={() => setIsSidebarOpen(false)} />
+            <NavItem section={AdminSection.Users} label={t('manageUsers')} icon={NavIcons.users} />
         )}
-        <NavItem section={AdminSection.Pdfs} label={t('managePdfs')} icon={NavIcons.pdfs} onClick={() => setIsSidebarOpen(false)} />
-        <NavItem section={AdminSection.ResourceLinks} label={t('manageResourceLinks')} icon={NavIcons.resourceLinks} onClick={() => setIsSidebarOpen(false)} />
-        <NavItem section={AdminSection.Videos} label={t('manageVideos')} icon={NavIcons.videos} onClick={() => setIsSidebarOpen(false)} />
-        <NavItem section={AdminSection.Recipes} label={t('manageRecipes')} icon={NavIcons.recipes} onClick={() => setIsSidebarOpen(false)} />
-        <NavItem section={AdminSection.Transformations} label={t('manageTransformations')} icon={NavIcons.transformations} onClick={() => setIsSidebarOpen(false)} />
+        <NavItem section={AdminSection.Pdfs} label={t('managePdfs')} icon={NavIcons.pdfs} />
+        <NavItem section={AdminSection.ResourceLinks} label={t('manageResourceLinks')} icon={NavIcons.resourceLinks} />
+        <NavItem section={AdminSection.Videos} label={t('manageVideos')} icon={NavIcons.videos} />
+        <NavItem section={AdminSection.Recipes} label={t('manageRecipes')} icon={NavIcons.recipes} />
+        <NavItem section={AdminSection.Transformations} label={t('manageTransformations')} icon={NavIcons.transformations} />
         {isSiteManager && (
-            <NavItem section={AdminSection.GlobalNotifications} label={t('globalNotifications')} icon={NavIcons.notifications} onClick={() => setIsSidebarOpen(false)} />
+            <NavItem section={AdminSection.GlobalNotifications} label={t('globalNotifications')} icon={NavIcons.notifications} />
         )}
       </aside>
 
@@ -104,6 +105,7 @@ const AdminPage: React.FC = () => {
     </div>
   );
 };
+export default AdminPage; // Add default export
 
 const ManageUsersSection: React.FC = () => {
   const { t } = useLocalization();
@@ -254,19 +256,19 @@ const ManageUsersSection: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('manageUsers')}</h2>
+      <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary} mb-4 sm:mb-6`}>{t('manageUsers')}</h2>
       {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
       <div className="overflow-x-auto shadow-md rounded-lg border border-slate-700">
         <table className="min-w-full divide-y divide-slate-700">
           <thead className={`bg-${THEME_COLORS.surface} bg-opacity-50`}>
             <tr>
-              <th scope="col" className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-slate-300 uppercase tracking-wider">{t('name')}</th>
-              <th scope="col" className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-slate-300 uppercase tracking-wider">{t('email')}</th>
-              <th scope="col" className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t('phoneNumber')}</th>
-              <th scope="col" className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-slate-300 uppercase tracking-wider hidden md:table-cell">{t('country')}</th>
-              <th scope="col" className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-slate-300 uppercase tracking-wider">{t('role', 'الدور')}</th>
-              <th scope="col" className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t('subscriptionStatus', 'حالة الاشتراك')}</th>
-              <th scope="col" className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-slate-300 uppercase tracking-wider">{t('actions')}</th>
+              <th scope="col" className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-${THEME_COLORS.textSecondary} uppercase tracking-wider`}>{t('name')}</th>
+              <th scope="col" className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-${THEME_COLORS.textSecondary} uppercase tracking-wider`}>{t('email')}</th>
+              <th scope="col" className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-${THEME_COLORS.textSecondary} uppercase tracking-wider hidden sm:table-cell`}>{t('phoneNumber')}</th>
+              <th scope="col" className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-${THEME_COLORS.textSecondary} uppercase tracking-wider hidden md:table-cell`}>{t('country')}</th>
+              <th scope="col" className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-${THEME_COLORS.textSecondary} uppercase tracking-wider`}>{t('role', 'الدور')}</th>
+              <th scope="col" className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-${THEME_COLORS.textSecondary} uppercase tracking-wider hidden sm:table-cell`}>{t('subscriptionStatus', 'حالة الاشتراك')}</th>
+              <th scope="col" className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 text-right font-medium text-${THEME_COLORS.textSecondary} uppercase tracking-wider`}>{t('actions')}</th>
             </tr>
           </thead>
           <tbody className={`bg-${THEME_COLORS.surface} divide-y divide-slate-700`}>
@@ -274,12 +276,12 @@ const ManageUsersSection: React.FC = () => {
               const isTargetSiteManager = user.email === ADMIN_EMAIL && user.role === UserRole.SITE_MANAGER;
               const isSelf = user.id === currentUser?.id;
               return (
-                <tr key={user.id} className="hover:bg-slate-700 transition-colors">
-                  <td className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-white">{user.name}</td>
-                  <td className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-slate-300">{user.email}</td>
-                  <td className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-slate-300 hidden sm:table-cell">{user.phoneNumber || 'N/A'}</td>
-                  <td className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-slate-300 hidden md:table-cell">{getCountryName(user.country)}</td>
-                  <td className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-slate-300">{getRoleText(user.role)}</td>
+                <tr key={user.id} className="hover:bg-slate-800 transition-colors"> {/* Changed hover bg */}
+                  <td className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-${THEME_COLORS.textPrimary}`}>{user.name}</td>
+                  <td className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-${THEME_COLORS.textSecondary}`}>{user.email}</td>
+                  <td className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-${THEME_COLORS.textSecondary} hidden sm:table-cell`}>{user.phoneNumber || 'N/A'}</td>
+                  <td className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-${THEME_COLORS.textSecondary} hidden md:table-cell`}>{getCountryName(user.country)}</td>
+                  <td className={`px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap text-${THEME_COLORS.textSecondary}`}>{getRoleText(user.role)}</td>
                   <td className="px-2 py-2 text-xs sm:text-sm sm:px-4 sm:py-3 whitespace-nowrap hidden sm:table-cell">
                     <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         user.subscriptionStatus === SubscriptionStatus.ACTIVE ? `bg-green-500 bg-opacity-20 text-green-300` :
@@ -319,7 +321,7 @@ const ManageUsersSection: React.FC = () => {
       </div>
       {isRoleConfirmModalOpen && userForRoleChange && roleConfirmAction && (
         <Modal isOpen={isRoleConfirmModalOpen} onClose={closeRoleConfirmModal} title={t('confirm', 'تأكيد الإجراء')} >
-          <p className="text-slate-300 mb-6 text-sm sm:text-base">
+          <p className={`text-${THEME_COLORS.textSecondary} mb-6 text-sm sm:text-base`}>
             {roleConfirmAction === 'promote' ? t('confirmPromotion') : t('confirmDemotion')}
             <strong className="mx-1">{userForRoleChange.name} ({userForRoleChange.email})</strong>?
           </p>
@@ -332,7 +334,7 @@ const ManageUsersSection: React.FC = () => {
       {isEditUserModalOpen && userToEdit && ( <EditUserInfoModal isOpen={isEditUserModalOpen} onClose={closeEditUserModal} userToEdit={userToEdit} onSave={handleSaveUserInfo} t={t} /> )}
       {isDeleteUserModalOpen && userToDelete && (
         <Modal isOpen={isDeleteUserModalOpen} onClose={closeDeleteUserModal} title={t('deleteUser')} >
-          <p className="text-slate-300 mb-6 text-sm sm:text-base"> {t('confirmDeleteUser', 'هل أنت متأكد أنك تريد حذف المستخدم {userName}؟').replace('{userName}', userToDelete.name)} </p>
+          <p className={`text-${THEME_COLORS.textSecondary} mb-6 text-sm sm:text-base`}> {t('confirmDeleteUser', 'هل أنت متأكد أنك تريد حذف المستخدم {userName}؟').replace('{userName}', userToDelete.name)} </p>
           <div className="flex flex-col xs:flex-row xs:justify-end gap-2 xs:gap-3">
             <Button variant="ghost" onClick={closeDeleteUserModal} size="sm">{t('cancel')}</Button>
             <Button variant="danger" onClick={handleConfirmDeleteUser} size="sm">{t('confirm')}</Button>
@@ -387,7 +389,7 @@ const EditUserInfoModal: React.FC<EditUserInfoModalProps> = ({ isOpen, onClose, 
                 <div>
                     <label htmlFor="country-edit" className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('country')}</label>
                     <select id="country-edit" name="country" value={country} onChange={e => setCountry(e.target.value)} required
-                        className={`block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-${THEME_COLORS.textPrimary}`} >
+                        className={`block w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-${THEME_COLORS.textPrimary}`} >
                         {COUNTRIES_LIST.map(c => ( <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option> ))}
                     </select>
                 </div>
@@ -453,17 +455,17 @@ const ManageVideosSection: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">{t('manageVideos')}</h2>
+        <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary}`}>{t('manageVideos')}</h2>
         <Button onClick={openModalForAdd} variant="primary" size="md"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 me-1 sm:me-2"> <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /> </svg> {t('addVideo')} </Button>
       </div>
-      {videos.length === 0 && !loading && <p className="text-slate-400 text-center py-8">{t('noVideosFound')}</p>}
+      {videos.length === 0 && !loading && <p className={`text-${THEME_COLORS.textSecondary} text-center py-8`}>{t('noVideosFound')}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {videos.map(video => (
           <Card key={video.id} className="p-3 sm:p-4 flex flex-col">
             <img src={video.thumbnailUrl || `https://picsum.photos/seed/${video.id}/300/180`} alt={video.title} className="w-full h-32 sm:h-40 object-cover rounded-lg mb-2 sm:mb-3 shadow-md"/>
             <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary}`}>{video.title}</h3>
-            <p className="text-xs sm:text-sm text-slate-300 my-1 flex-grow">{video.description.substring(0, 70)}{video.description.length > 70 && '...'}</p>
-            <div className="text-xs text-slate-400 mt-2"> <span>{t('category')}: {t(video.category.toLowerCase(), video.category)}</span> | <span>{t('duration')}: {video.durationMinutes} {t('minutes')}</span> </div>
+            <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary} my-1 flex-grow`}>{video.description.substring(0, 70)}{video.description.length > 70 && '...'}</p>
+            <div className={`text-xs text-${THEME_COLORS.textSecondary} opacity-80 mt-2`}> <span>{t('category')}: {t(video.category.toLowerCase(), video.category)}</span> | <span>{t('duration')}: {video.durationMinutes} {t('minutes')}</span> </div>
             <div className="mt-3 sm:mt-4 flex gap-1 sm:gap-2 border-t border-slate-700 pt-2 sm:pt-3">
                 <Button onClick={() => openModalForEdit(video)} size="sm" variant="secondary" className="!text-xs !px-2 !py-1">{t('edit')}</Button>
                 <Button onClick={() => handleDelete(video.id)} size="sm" variant="danger" className="!text-xs !px-2 !py-1">{t('delete')}</Button>
@@ -498,7 +500,7 @@ const VideoFormModal: React.FC<VideoFormModalProps> = ({ isOpen, onClose, videoD
                 <Input label={t('videoDuration')} name="durationMinutes" type="number" value={formData.durationMinutes || ''} onChange={handleChange} required />
                 <div>
                     <label htmlFor="category" className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('videoCategory')}</label>
-                    <select id="category" name="category" value={formData.category || 'Cardio'} onChange={handleChange} className={`w-full bg-slate-700 border border-slate-600 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5`}>
+                    <select id="category" name="category" value={formData.category || 'Cardio'} onChange={handleChange} className={`w-full bg-slate-800 border border-slate-700 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5`}>
                         {videoCategories.map(cat => <option key={cat} value={cat}>{t(cat.toLowerCase(), cat)}</option>)}
                     </select>
                 </div>
@@ -560,17 +562,17 @@ const ManageRecipesSection: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">{t('manageRecipes')}</h2>
+        <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary}`}>{t('manageRecipes')}</h2>
          <Button onClick={openModalForAdd} variant="primary" size="md"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 me-1 sm:me-2"> <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /> </svg> {t('addRecipe')} </Button>
       </div>
-      {recipes.length === 0 && !loading && <p className="text-slate-400 text-center py-8">{t('noRecipesFound')}</p>}
+      {recipes.length === 0 && !loading && <p className={`text-${THEME_COLORS.textSecondary} text-center py-8`}>{t('noRecipesFound')}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {recipes.map(recipe => (
           <Card key={recipe.id} className="p-3 sm:p-4 flex flex-col">
             <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.id}/300/200`} alt={recipe.name} className="w-full h-32 sm:h-40 object-cover rounded-lg mb-2 sm:mb-3 shadow-md"/>
             <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary}`}>{recipe.name}</h3>
-            <p className="text-xs sm:text-sm text-slate-300 my-1 flex-grow">{recipe.description.substring(0, 70)}{recipe.description.length > 70 && '...'}</p>
-             <div className="text-xs text-slate-400 mt-2"> <span>{t('category')}: {t(recipe.category.toLowerCase(), recipe.category)}</span> | <span>{t('servings')}: {recipe.servings}</span> </div>
+            <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary} my-1 flex-grow`}>{recipe.description.substring(0, 70)}{recipe.description.length > 70 && '...'}</p>
+             <div className={`text-xs text-${THEME_COLORS.textSecondary} opacity-80 mt-2`}> <span>{t('category')}: {t(recipe.category.toLowerCase(), recipe.category)}</span> | <span>{t('servings')}: {recipe.servings}</span> </div>
              <div className="mt-3 sm:mt-4 flex gap-1 sm:gap-2 border-t border-slate-700 pt-2 sm:pt-3">
                 <Button onClick={() => openModalForEdit(recipe)} size="sm" variant="secondary" className="!text-xs !px-2 !py-1">{t('edit')}</Button>
                 <Button onClick={() => handleDelete(recipe.id)} size="sm" variant="danger" className="!text-xs !px-2 !py-1">{t('delete')}</Button>
@@ -637,7 +639,7 @@ const RecipeFormModal: React.FC<RecipeFormModalProps> = ({ isOpen, onClose, reci
                 </div>
                  <div>
                     <label htmlFor="recipeCategory" className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('recipeCategory')}</label>
-                    <select id="recipeCategory" name="category" value={formData.category || 'Breakfast'} onChange={handleChange} className={`w-full bg-slate-700 border border-slate-600 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5`}>
+                    <select id="recipeCategory" name="category" value={formData.category || 'Breakfast'} onChange={handleChange} className={`w-full bg-slate-800 border border-slate-700 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5`}>
                         {recipeCategories.map(cat => <option key={cat} value={cat}>{t(cat.toLowerCase(), cat)}</option>)}
                     </select>
                 </div>
@@ -718,25 +720,25 @@ const ManagePdfsSection: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">{t('managePdfs')}</h2>
+        <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary}`}>{t('managePdfs')}</h2>
         <Button onClick={openModalForAdd} isLoading={loading && isModalOpen} variant="primary" size="md"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 me-1 sm:me-2"> <path d="M9.25 3.25a.75.75 0 00-1.5 0v3.5h-3.5a.75.75 0 000 1.5h3.5v3.5a.75.75 0 001.5 0v-3.5h3.5a.75.75 0 000-1.5h-3.5v-3.5z" /> </svg> {t('uploadPdf')} </Button>
       </div>
       {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
       
-      {pdfs.length === 0 && !loading && <p className="text-slate-400 text-center py-8">{t('noPdfsUploaded')}</p>}
+      {pdfs.length === 0 && !loading && <p className={`text-${THEME_COLORS.textSecondary} text-center py-8`}>{t('noPdfsUploaded')}</p>}
       <div className="space-y-3 sm:space-y-4">
         {pdfs.map(pdf => (
           <Card key={pdf.id} className="p-3 sm:p-4 hover:border-sky-500">
             <div className="flex flex-col md:flex-row justify-between md:items-start gap-2 md:gap-4">
                 <div className="flex-grow">
                     <h3 className={`text-lg sm:text-xl font-semibold text-${THEME_COLORS.primary} break-all`}>{pdf.fileName}</h3>
-                    <p className="text-xs sm:text-sm text-slate-300 mt-1">{pdf.description}</p>
-                    <p className="text-xs text-slate-400 mt-1">{t('uploadDate')}: {new Date(pdf.uploadDate).toLocaleDateString('ar-EG')}</p>
+                    <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary} mt-1`}>{pdf.description}</p>
+                    <p className={`text-xs text-${THEME_COLORS.textSecondary} opacity-80 mt-1`}>{t('uploadDate')}: {new Date(pdf.uploadDate).toLocaleDateString('ar-EG')}</p>
                      {pdf.assignedUserIds.length > 0 && (
                         <div className="mt-1.5 sm:mt-2">
-                            <p className="text-xs font-semibold text-slate-200">{t('assignedUsers')}</p>
+                            <p className={`text-xs font-semibold text-${THEME_COLORS.textPrimary}`}>{t('assignedUsers')}</p>
                             <div className="flex flex-wrap gap-1 mt-1">
-                            {pdf.assignedUserIds.map(userId => { const user = allUsers.find(u => u.id === userId); return user ? <span key={userId} className="text-xs bg-slate-600 text-slate-200 px-1.5 py-0.5 sm:px-2 rounded-full">{user.name}</span> : null; })}
+                            {pdf.assignedUserIds.map(userId => { const user = allUsers.find(u => u.id === userId); return user ? <span key={userId} className={`text-xs bg-slate-700 text-${THEME_COLORS.textSecondary} px-1.5 py-0.5 sm:px-2 rounded-full`}>{user.name}</span> : null; })}
                             </div>
                         </div>
                     )}
@@ -783,17 +785,17 @@ const PdfFormModal: React.FC<PdfFormModalProps> = ({ isOpen, onClose, pdfData, o
         <Modal isOpen={isOpen} onClose={onClose} title={formData.id ? t('editPdfAssignments') : t('uploadPdf')} size="lg">
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 max-h-[75vh] overflow-y-auto p-1">
                 {!formData.id && ( <div> <label htmlFor="pdfFile" className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1`}>{t('selectPdfFile')}</label> <Input id="pdfFile" name="file" type="file" accept=".pdf" onChange={handleFileChange} required={!formData.id} /> {fileError && <p className="text-xs text-red-400 mt-1">{fileError}</p>} </div> )}
-                {formData.id && formData.fileName && <p className="text-slate-300 text-sm sm:text-base"><strong>{t('pdfFileName')}:</strong> {formData.fileName}</p>}
+                {formData.id && formData.fileName && <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base`}><strong className={`text-${THEME_COLORS.textPrimary}`}>{t('pdfFileName')}:</strong> {formData.fileName}</p>}
                 <Textarea label={t('pdfDescription')} name="description" value={formData.description || ''} onChange={handleChange} required />
                 <div>
-                    <h4 className="text-sm sm:text-md font-semibold mb-1 sm:mb-2 text-slate-200">{t('selectUsersToAssign')}</h4>
-                    {allUsers.length === 0 && <p className="text-xs sm:text-sm text-slate-400">{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
-                    <div className="max-h-32 sm:max-h-40 overflow-y-auto space-y-1.5 sm:space-y-2 border border-slate-700 p-2 sm:p-3 rounded-md bg-slate-900 bg-opacity-50">
+                    <h4 className={`text-sm sm:text-md font-semibold mb-1 sm:mb-2 text-${THEME_COLORS.textPrimary}`}>{t('selectUsersToAssign')}</h4>
+                    {allUsers.length === 0 && <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary}`}>{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
+                    <div className={`max-h-32 sm:max-h-40 overflow-y-auto space-y-1.5 sm:space-y-2 border border-slate-700 p-2 sm:p-3 rounded-md bg-${THEME_COLORS.background} bg-opacity-50`}>
                         {allUsers.map(user => (
                             <div key={user.id} className="flex items-center">
                                 <input type="checkbox" id={`user-assign-${user.id}`} checked={formData.assignedUserIds?.includes(user.id) || false} onChange={() => handleUserAssignmentChange(user.id)}
                                     className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-${THEME_COLORS.primary} bg-slate-700 border-slate-600 rounded focus:ring-${THEME_COLORS.primary} focus:ring-2 focus:ring-offset-${THEME_COLORS.surface}`} />
-                                <label htmlFor={`user-assign-${user.id}`} className="ms-2 text-xs sm:text-sm font-medium text-slate-300">{user.name} ({user.email})</label>
+                                <label htmlFor={`user-assign-${user.id}`} className={`ms-2 text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary}`}>{user.name} ({user.email})</label>
                             </div>
                         ))}
                     </div>
@@ -886,7 +888,7 @@ const ManageResourceLinksSection: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">{t('manageResourceLinks')}</h2>
+        <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary}`}>{t('manageResourceLinks')}</h2>
         <Button onClick={openModalForAdd} isLoading={loading && isModalOpen} variant="primary" size="md"> 
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 me-1 sm:me-2"> <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /> </svg> 
           {t('addResourceLink')} 
@@ -894,21 +896,21 @@ const ManageResourceLinksSection: React.FC = () => {
       </div>
       {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
       
-      {resourceLinks.length === 0 && !loading && <p className="text-slate-400 text-center py-8">{t('noResourceLinksUploaded')}</p>}
+      {resourceLinks.length === 0 && !loading && <p className={`text-${THEME_COLORS.textSecondary} text-center py-8`}>{t('noResourceLinksUploaded')}</p>}
       <div className="space-y-3 sm:space-y-4">
         {resourceLinks.map(link => (
           <Card key={link.id} className="p-3 sm:p-4 hover:border-sky-500">
             <div className="flex flex-col md:flex-row justify-between md:items-start gap-2 md:gap-4">
                 <div className="flex-grow">
                     <h3 className={`text-lg sm:text-xl font-semibold text-${THEME_COLORS.primary} break-all`}>{link.title}</h3>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className={`text-xs sm:text-sm text-${THEME_COLORS.secondary} hover:text-${THEME_COLORS.secondaryHover} underline break-all`}>{link.url}</a>
-                    <p className="text-xs sm:text-sm text-slate-300 mt-1">{link.description}</p>
-                    <p className="text-xs text-slate-400 mt-1">{t('resourceLinkCategory')}: {getResourceCategoryName(link.category)} | {t('uploadDate')}: {new Date(link.addedDate).toLocaleDateString('ar-EG')}</p>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className={`text-xs sm:text-sm text-${THEME_COLORS.primaryHover} hover:text-${THEME_COLORS.primary} underline break-all`}>{link.url}</a> {/* Changed color */}
+                    <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary} mt-1`}>{link.description}</p>
+                    <p className={`text-xs text-${THEME_COLORS.textSecondary} opacity-80 mt-1`}>{t('resourceLinkCategory')}: {getResourceCategoryName(link.category)} | {t('uploadDate')}: {new Date(link.addedDate).toLocaleDateString('ar-EG')}</p>
                      {link.assignedUserIds.length > 0 && (
                         <div className="mt-1.5 sm:mt-2">
-                            <p className="text-xs font-semibold text-slate-200">{t('assignedUsers')}</p>
+                            <p className={`text-xs font-semibold text-${THEME_COLORS.textPrimary}`}>{t('assignedUsers')}</p>
                             <div className="flex flex-wrap gap-1 mt-1">
-                            {link.assignedUserIds.map(userId => { const user = allUsers.find(u => u.id === userId); return user ? <span key={userId} className="text-xs bg-slate-600 text-slate-200 px-1.5 py-0.5 sm:px-2 rounded-full">{user.name}</span> : null; })}
+                            {link.assignedUserIds.map(userId => { const user = allUsers.find(u => u.id === userId); return user ? <span key={userId} className={`text-xs bg-slate-700 text-${THEME_COLORS.textSecondary} px-1.5 py-0.5 sm:px-2 rounded-full`}>{user.name}</span> : null; })}
                             </div>
                         </div>
                     )}
@@ -985,7 +987,7 @@ const ResourceLinkFormModal: React.FC<ResourceLinkFormModalProps> = ({ isOpen, o
                         name="category" 
                         value={formData.category || ExternalResourceCategory.WORKOUT_PLAN} 
                         onChange={handleChange}
-                        className={`w-full bg-slate-700 border border-slate-600 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5`}
+                        className={`w-full bg-slate-800 border border-slate-700 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5`}
                     >
                         {EXTERNAL_RESOURCE_CATEGORIES.map(cat => (
                             <option key={cat.id} value={cat.id}>{t(cat.name_key, cat.id)}</option>
@@ -993,14 +995,14 @@ const ResourceLinkFormModal: React.FC<ResourceLinkFormModalProps> = ({ isOpen, o
                     </select>
                 </div>
                 <div>
-                    <h4 className="text-sm sm:text-md font-semibold mb-1 sm:mb-2 text-slate-200">{t('selectUsersToAssign')}</h4>
-                    {allUsers.length === 0 && <p className="text-xs sm:text-sm text-slate-400">{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
-                    <div className="max-h-32 sm:max-h-40 overflow-y-auto space-y-1.5 sm:space-y-2 border border-slate-700 p-2 sm:p-3 rounded-md bg-slate-900 bg-opacity-50">
+                    <h4 className={`text-sm sm:text-md font-semibold mb-1 sm:mb-2 text-${THEME_COLORS.textPrimary}`}>{t('selectUsersToAssign')}</h4>
+                    {allUsers.length === 0 && <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary}`}>{t('manageUsers', 'لا يوجد مستخدمون لعرضهم. أضف مستخدمين أولاً.')}</p>}
+                    <div className={`max-h-32 sm:max-h-40 overflow-y-auto space-y-1.5 sm:space-y-2 border border-slate-700 p-2 sm:p-3 rounded-md bg-${THEME_COLORS.background} bg-opacity-50`}>
                         {allUsers.map(user => (
                             <div key={user.id} className="flex items-center">
                                 <input type="checkbox" id={`user-assign-link-${user.id}`} checked={formData.assignedUserIds?.includes(user.id) || false} onChange={() => handleUserAssignmentChange(user.id)}
                                     className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-${THEME_COLORS.primary} bg-slate-700 border-slate-600 rounded focus:ring-${THEME_COLORS.primary} focus:ring-2 focus:ring-offset-${THEME_COLORS.surface}`} />
-                                <label htmlFor={`user-assign-link-${user.id}`} className="ms-2 text-xs sm:text-sm font-medium text-slate-300">{user.name} ({user.email})</label>
+                                <label htmlFor={`user-assign-link-${user.id}`} className={`ms-2 text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary}`}>{user.name} ({user.email})</label>
                             </div>
                         ))}
                     </div>
@@ -1063,20 +1065,20 @@ const ManageSubscriptionPlansSection: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">{t('manageSubscriptionPlans')}</h2>
+        <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary}`}>{t('manageSubscriptionPlans')}</h2>
         <Button onClick={openModalForAdd} variant="primary" size="md"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5 me-1 sm:me-2"> <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /> </svg> {t('addSubscriptionPlan')} </Button>
       </div>
-      {plans.length === 0 && !loading && <p className="text-slate-400 text-center py-8">{t('noPlansDefined', 'لا توجد خطط اشتراك معرفة حاليًا.')}</p>}
+      {plans.length === 0 && !loading && <p className={`text-${THEME_COLORS.textSecondary} text-center py-8`}>{t('noPlansDefined', 'لا توجد خطط اشتراك معرفة حاليًا.')}</p>}
       <div className="space-y-3 sm:space-y-4">
         {plans.map(plan => (
           <Card key={plan.id} className="p-3 sm:p-4 hover:border-sky-500">
             <div className="flex flex-col md:flex-row justify-between md:items-start gap-2 md:gap-4">
                 <div className="flex-grow">
                     <h3 className={`text-lg sm:text-xl font-semibold text-${THEME_COLORS.primary}`}>{plan.name}</h3>
-                    <p className="text-md sm:text-lg text-white">{plan.price} {plan.currency}</p>
-                    <p className="text-xs sm:text-sm text-slate-300 mt-1">{plan.description}</p>
-                    <ul className="list-disc list-inside mt-1.5 sm:mt-2 text-xs sm:text-sm text-slate-400 space-y-1">
-                        {plan.features.map(feature => <li key={feature.id} className="flex items-start"><svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lime-400 me-1.5 sm:me-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>{feature.text}</li>)}
+                    <p className={`text-md sm:text-lg text-${THEME_COLORS.textPrimary}`}>{plan.price} {plan.currency}</p>
+                    <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary} mt-1`}>{plan.description}</p>
+                    <ul className={`list-disc list-inside mt-1.5 sm:mt-2 text-xs sm:text-sm text-${THEME_COLORS.textSecondary} space-y-1`}>
+                        {plan.features.map(feature => <li key={feature.id} className="flex items-start"><svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lime-400 me-1.5 sm:me-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>{feature.text}</li>)}
                     </ul>
                 </div>
                 <div className="flex gap-1 sm:gap-2 mt-2 md:mt-0 self-start md:self-center flex-shrink-0">
@@ -1095,34 +1097,45 @@ const ManageSubscriptionPlansSection: React.FC = () => {
 interface SubscriptionPlanFormModalProps { isOpen: boolean; onClose: () => void; planData: Partial<SubscriptionPlan>; onSave: (data: Partial<SubscriptionPlan>) => Promise<void>; }
 const SubscriptionPlanFormModal: React.FC<SubscriptionPlanFormModalProps> = ({ isOpen, onClose, planData, onSave }) => {
     const { t } = useLocalization();
-    const [formData, setFormData] = useState<Partial<SubscriptionPlan>>( planData.id ? JSON.parse(JSON.stringify(planData)) : { ...planData, features: planData.features?.length ? planData.features : [{id: `new_feat_${Date.now()}`, text: ''}] } );
+    const [formData, setFormData] = useState<Partial<SubscriptionPlan>>(planData);
     const [isSaving, setIsSaving] = useState(false);
-    useEffect(() => { setFormData(planData.id ? JSON.parse(JSON.stringify(planData)) : { ...planData, features: planData.features?.length ? planData.features : [{id: `new_feat_${Date.now()}`, text: ''}] }); }, [planData]);
-    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: name === 'price' ? parseFloat(value) || 0 : value })); };
-    const handleFeatureChange = (index: number, value: string) => { const newFeatures = [...(formData.features || [])]; newFeatures[index] = { ...newFeatures[index], text: value }; if (!newFeatures[index].id) newFeatures[index].id = `new_feat_edit_${Date.now()}_${index}`; setFormData(prev => ({ ...prev, features: newFeatures })); };
-    const addFeatureField = () => { setFormData(prev => ({ ...prev, features: [...(prev.features || []), {id: `new_feat_${Date.now()}_${(prev.features || []).length}`, text: ''}] })); };
-    const removeFeatureField = (idToRemove: string) => { setFormData(prev => ({ ...prev, features: (prev.features || []).filter(f => f.id !== idToRemove) })); };
+    useEffect(() => setFormData(planData), [planData]);
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: name === 'price' ? parseFloat(value) || 0 : value }));
+    };
+    const handleFeatureChange = (index: number, text: string) => {
+        const newFeatures = [...(formData.features || [])];
+        if (!newFeatures[index]) newFeatures[index] = { id: `new_feat_${Date.now()}_${index}`, text: ''};
+        newFeatures[index].text = text;
+        setFormData(prev => ({ ...prev, features: newFeatures }));
+    };
+    const addFeatureField = () => setFormData(prev => ({ ...prev, features: [...(prev.features || []), { id: `new_feat_${Date.now()}_${(prev.features || []).length}`, text: ''}] }));
+    const removeFeatureField = (index: number) => {
+      setFormData(prev => {
+        const updatedFeatures = (prev.features || []).filter((_, i) => i !== index);
+        return { ...prev, features: updatedFeatures };
+      });
+    };
     const handleSubmit = async (e: FormEvent) => { e.preventDefault(); setIsSaving(true); await onSave(formData); setIsSaving(false); };
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={formData.id ? t('editSubscriptionPlan') : t('addSubscriptionPlan')} size="lg">
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 max-h-[75vh] overflow-y-auto p-1">
                 <Input label={t('planName')} name="name" value={formData.name || ''} onChange={handleChange} required />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <Input label={t('planPrice')} name="price" type="number" step="0.01" value={formData.price || ''} onChange={handleChange} required placeholder={t('pricePlaceholder')} />
-                    <Input label={t('planCurrency')} name="currency" value={formData.currency || 'SAR'} onChange={handleChange} required placeholder={t('currencyPlaceholder')} />
-                </div>
+                <Input label={t('planPrice')} name="price" type="number" step="0.01" value={formData.price || ''} onChange={handleChange} required placeholder={t('pricePlaceholder')} />
+                <Input label={t('planCurrency')} name="currency" value={formData.currency || ''} onChange={handleChange} required placeholder={t('currencyPlaceholder')} />
                 <Textarea label={t('planDescription')} name="description" value={formData.description || ''} onChange={handleChange} required />
                 <div>
                     <h4 className="text-sm sm:text-md font-semibold mb-1">{t('planFeatures')}</h4>
                     {(formData.features || []).map((feature, index) => (
-                        <div key={feature.id || `feature-${index}`} className="flex gap-1 sm:gap-2 mb-1 sm:mb-2 items-center">
+                        <div key={feature.id || `temp_feat_${index}`} className="flex gap-1 sm:gap-2 mb-1 sm:mb-2 items-center">
                             <Input placeholder={t('featureText')} value={feature.text} onChange={e => handleFeatureChange(index, e.target.value)} className="flex-grow !text-xs sm:!text-sm" />
-                            <Button type="button" variant="danger" size="sm" onClick={() => removeFeatureField(feature.id)} disabled={(formData.features?.length || 0) <= 1 && feature.text === ''} className="!px-2 !py-1" >X</Button>
+                            <Button type="button" variant="danger" size="sm" onClick={() => removeFeatureField(index)} disabled={(formData.features?.length || 0) <= 1} className="!px-2 !py-1">X</Button>
                         </div>
                     ))}
                     <Button type="button" variant="ghost" size="sm" onClick={addFeatureField} className="!text-xs !px-2 !py-1">{t('addFeature')}</Button>
                 </div>
-                <div className="flex flex-col xs:flex-row xs:justify-end gap-2 xs:gap-3 pt-3 sm:pt-4 mt-1 sm:mt-2 border-t border-slate-700">
+                 <div className="flex flex-col xs:flex-row xs:justify-end gap-2 xs:gap-3 pt-3 sm:pt-4 mt-1 sm:mt-2 border-t border-slate-700">
                     <Button type="button" variant="ghost" onClick={onClose} disabled={isSaving} size="sm">{t('cancel')}</Button>
                     <Button type="submit" isLoading={isSaving} size="sm">{t('saveChanges')}</Button>
                 </div>
@@ -1131,248 +1144,252 @@ const SubscriptionPlanFormModal: React.FC<SubscriptionPlanFormModalProps> = ({ i
     );
 };
 
+// Approve Subscriptions Section
 const ApproveSubscriptionsSection: React.FC = () => {
-  const { t } = useLocalization();
-  const { currentUser } = useAuth();
-  const [requests, setRequests] = useState<SubscriptionRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [durationDays, setDurationDays] = useState<{ [requestId: string]: number }>({});
-
-  const refreshRequests = async () => {
-     setLoading(true);
-     try {
-       const fetchedRequests = await DataService.getSubscriptionRequests();
-       setRequests(fetchedRequests.filter(r => r.status === SubscriptionStatus.PENDING));
-     } catch (error) { console.error("Error fetching subscription requests:", error); }
-     setLoading(false);
-  };
-  useEffect(() => { refreshRequests(); }, []);
-
-  const handleApprove = async (requestId: string) => {
-    if (!currentUser) return;
-    const days = durationDays[requestId] || 30; 
-    setLoading(true); // Indicate loading for this specific action
-    try {
-      await DataService.approveSubscription(requestId, currentUser.id, days);
-      await refreshRequests();
-    } catch (error) { console.error("Error approving subscription:", error); }
-    setLoading(false);
-  };
-
-  const handleReject = async (requestId: string) => {
-     if (!currentUser) return;
-    setLoading(true);
-    try {
-      await DataService.rejectSubscription(requestId, currentUser.id, t('rejectedByAdmin', 'تم الرفض بواسطة الإدارة'));
-      await refreshRequests();
-    } catch (error) { console.error("Error rejecting subscription:", error); }
-    setLoading(false);
-  };
-  
-  const handleDurationChange = (requestId: string, value: string) => { setDurationDays(prev => ({...prev, [requestId]: parseInt(value) || 0 })); };
-
-  if (loading && requests.length === 0) return <LoadingOverlay message={t('loading')} />;
-
-  return (
-    <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('pendingSubscriptions')}</h2>
-      {requests.length === 0 && !loading ? (
-        <p className="text-slate-400 py-8 text-center">{t('noPendingSubscriptions')}</p>
-      ) : (
-        <div className="space-y-3 sm:space-y-4">
-          {requests.map(req => (
-            <Card key={req.id} className="p-3 sm:p-4 hover:border-sky-500">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 items-end">
-                  <div className="text-xs sm:text-sm"><strong className="text-slate-300">{t('user')}:</strong> <span className="text-white break-all">{req.userEmail}</span></div>
-                  <div className="text-xs sm:text-sm"><strong className="text-slate-300">{t('plan')}:</strong> <span className="text-white">{req.planNameSnapshot}</span> (<span className="text-yellow-400">{t('requested', 'مطلوب')}</span>)</div>
-                  <div className="flex-grow">
-                      <Input type="number" label={t('setDuration')} value={durationDays[req.id] || ''} onChange={(e) => handleDurationChange(req.id, e.target.value)} min="1" placeholder={t('durationDaysPlaceholder')} aria-describedby={`duration-help-${req.id}`} className="w-full" />
-                       <small id={`duration-help-${req.id}`} className="text-xs text-slate-400 mt-1 hidden">{t('daysDurationHelp', 'أدخل عدد أيام صلاحية الاشتراك.')}</small>
-                  </div>
-                  <div className="flex flex-col xs:flex-row gap-1 sm:gap-2 xs:justify-end self-center sm:self-end">
-                      <Button onClick={() => handleApprove(req.id)} size="sm" variant="primary" isLoading={loading && durationDays[req.id] > 0} disabled={!durationDays[req.id] || durationDays[req.id] <=0 } className="!text-xs !px-2 !py-1 w-full xs:w-auto">{t('approve')}</Button>
-                      <Button onClick={() => handleReject(req.id)} size="sm" variant="danger" isLoading={loading} className="!text-xs !px-2 !py-1 w-full xs:w-auto">{t('reject')}</Button>
-                  </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const SendGlobalNotificationSection: React.FC = () => {
-  const { t } = useLocalization();
-  const { currentUser, isSiteManager, refreshNotifications } = useAuth();
-  const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState({ type: '', message: '' });
-
-  if (!isSiteManager || !currentUser) return <p>{t('adminAccessOnly')}</p>;
-
-  const handleSendNotification = async () => {
-    if (!message.trim()) { setFeedback({ type: 'error', message: t('fieldRequired') }); return; }
-    setIsLoading(true);
-    setFeedback({ type: '', message: '' });
-    try {
-      await DataService.addGlobalNotification(message, currentUser.id);
-      setFeedback({ type: 'success', message: t('notificationSentSuccess') });
-      setMessage('');
-      await refreshNotifications(); 
-    } catch (error: any) { setFeedback({ type: 'error', message: error.message || t('errorOccurred') }); }
-    setIsLoading(false);
-    setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
-  };
-  return (
-    <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('sendGlobalNotification')}</h2>
-      {feedback.message && ( <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}> {feedback.message} </p> )}
-      <div className="space-y-3 sm:space-y-4">
-        <Textarea label={t('notificationMessage')} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t('enterYourMessage')} rows={5} required />
-        <Button onClick={handleSendNotification} isLoading={isLoading} variant="primary" size="md"> {t('sendToAllUsers')} </Button>
-      </div>
-    </div>
-  );
-};
-
-const ManageTransformationsSection: React.FC = () => {
     const { t } = useLocalization();
     const { currentUser } = useAuth();
-    const [posts, setPosts] = useState<TransformationPost[]>([]);
+    const [requests, setRequests] = useState<SubscriptionRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewingPost, setViewingPost] = useState<TransformationPost | null>(null);
-    const [feedback, setFeedback] = useState({type: '', message: ''});
+    const [feedback, setFeedback] = useState({ type: '', message: '' });
+    const [durationDays, setDurationDays] = useState<{ [requestId: string]: string }>({});
+    const [adminNotes, setAdminNotes] = useState<{ [requestId: string]: string }>({});
+    const [processingRequest, setProcessingRequest] = useState<string | null>(null);
 
-    const fetchPosts = async () => {
+    const fetchRequests = async () => {
         setLoading(true);
+        setFeedback({ type: '', message: '' });
         try {
-            const fetchedPosts = await DataService.getTransformationPosts();
-            setPosts(fetchedPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        } catch (error) { console.error("Error fetching transformation posts:", error); }
+            const fetchedRequests = await DataService.getSubscriptionRequests();
+            setRequests(fetchedRequests.filter(req => req.status === SubscriptionStatus.PENDING));
+        } catch (error) {
+            console.error("Error fetching subscription requests:", error);
+            showFeedback('error', 'errorOccurred');
+        }
         setLoading(false);
     };
-    useEffect(() => { fetchPosts(); }, []);
 
-    const showFeedback = (type: 'success' | 'error', messageKey: string) => { setFeedback({type, message: t(messageKey)}); setTimeout(() => setFeedback({ type: '', message: '' }), 3000); };
+    useEffect(() => {
+        fetchRequests();
+    }, []);
 
-    const handleDeletePost = async (postId: string) => {
-        if (!currentUser || (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.SITE_MANAGER)) return;
-        if (window.confirm(t('confirmDeletePost'))) {
-            try {
-                await DataService.deleteTransformationPost(postId, currentUser.id);
-                await fetchPosts();
-                showFeedback('success', 'postDeletedSuccess');
-            } catch (error: any) { showFeedback('error', error.message || 'errorOccurred'); }
+    const showFeedback = (type: 'success' | 'error', messageKey: string) => {
+        setFeedback({ type, message: t(messageKey) });
+        setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
+    };
+
+    const handleApprove = async (requestId: string) => {
+        if (!currentUser) return;
+        const duration = parseInt(durationDays[requestId] || '30', 10);
+        if (isNaN(duration) || duration <= 0) {
+            showFeedback('error', 'invalidDuration');
+            return;
         }
+        setProcessingRequest(requestId);
+        try {
+            await DataService.approveSubscription(requestId, currentUser.id, duration);
+            showFeedback('success', 'subscriptionApprovedSuccess');
+            await fetchRequests(); // Refresh list
+        } catch (error: any) {
+            console.error("Error approving subscription:", error);
+            showFeedback('error', error.message || 'errorOccurred');
+        }
+        setProcessingRequest(null);
+    };
+
+    const handleReject = async (requestId: string) => {
+        if (!currentUser) return;
+        setProcessingRequest(requestId);
+        try {
+            await DataService.rejectSubscription(requestId, currentUser.id, adminNotes[requestId]);
+            showFeedback('success', 'subscriptionRejectedSuccess');
+            await fetchRequests(); // Refresh list
+        } catch (error: any) {
+            console.error("Error rejecting subscription:", error);
+            showFeedback('error', error.message || 'errorOccurred');
+        }
+        setProcessingRequest(null);
     };
     
-    const handleCommentAction = async () => { 
-        await fetchPosts(); 
-        if(viewingPost) {
-            const updatedPost = await DataService.getTransformationPostById(viewingPost.id);
-            setViewingPost(updatedPost || null);
-        }
-    }
-
-    if (loading && !viewingPost && posts.length === 0) return <LoadingOverlay message={t('loading')} />;
+    if (loading) return <LoadingOverlay message={t('loading')} />;
 
     return (
         <div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">{t('manageTransformations')}</h2>
+            <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary} mb-4 sm:mb-6`}>{t('pendingSubscriptions')}</h2>
             {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
             
-            {posts.length === 0 && !loading ? (
-                <p className="text-slate-400 text-center py-8">{t('noTransformationsPosted')}</p>
+            {requests.length === 0 ? (
+                <p className={`text-${THEME_COLORS.textSecondary} text-center py-8`}>{t('noPendingSubscriptions')}</p>
             ) : (
                 <div className="space-y-3 sm:space-y-4">
-                    {posts.map(post => (
-                        <Card key={post.id} className="p-3 sm:p-4">
-                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                                <div className="flex-shrink-0 grid grid-cols-2 gap-1 sm:gap-2 w-full sm:w-40 md:w-48">
-                                    <img src={post.beforeImageUrl} alt={t('beforePhoto')} className="w-full h-20 sm:h-24 object-cover rounded" />
-                                    <img src={post.afterImageUrl} alt={t('afterPhoto')} className="w-full h-20 sm:h-24 object-cover rounded" />
-                                </div>
+                    {requests.map(req => (
+                        <Card key={req.id} className="p-3 sm:p-4">
+                            <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-3">
                                 <div className="flex-grow">
-                                    <h3 className="text-md sm:text-lg font-semibold text-sky-400 break-all">{post.title}</h3>
-                                    <p className="text-xs sm:text-sm text-slate-300"> {t('user')}: {post.userName} ({post.userId.substring(0,8)}...) </p>
-                                    <p className="text-xs text-slate-400"> {new Date(post.createdAt).toLocaleDateString('ar-EG')} - {post.likes.length} {t('likes')} / {post.commentsCount} {t('comments')} </p>
+                                    <p className={`text-sm sm:text-base text-${THEME_COLORS.textPrimary}`}><strong className="font-semibold">{t('user')}:</strong> {req.userEmail}</p>
+                                    <p className={`text-sm sm:text-base text-${THEME_COLORS.textPrimary}`}><strong className="font-semibold">{t('plan')}:</strong> {req.planNameSnapshot}</p>
+                                    <p className={`text-xs text-${THEME_COLORS.textSecondary}`}>{t('requestedOn')}: {new Date(req.requestDate).toLocaleDateString('ar-EG')}</p>
                                 </div>
-                                <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 items-start sm:items-center mt-2 sm:mt-0">
-                                    <Button onClick={() => setViewingPost(post)} variant="ghost" size="sm" className="!text-xs !px-2 !py-1"> {t('viewPostDetails')} </Button>
-                                    <Button onClick={() => handleDeletePost(post.id)} variant="danger" size="sm" className="!text-xs !px-2 !py-1"> {t('deletePost')} </Button>
+                                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            label={t('setDuration')}
+                                            type="number"
+                                            value={durationDays[req.id] || '30'}
+                                            onChange={e => setDurationDays(prev => ({ ...prev, [req.id]: e.target.value }))}
+                                            placeholder={t('durationDaysPlaceholder')}
+                                            min="1"
+                                            className="!text-xs sm:!text-sm !py-1 sm:!py-1.5"
+                                        />
+                                        <Button onClick={() => handleApprove(req.id)} variant="primary" size="sm" isLoading={processingRequest === req.id} className="flex-shrink-0 !text-xs sm:!text-sm">{t('approve')}</Button>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Textarea
+                                            placeholder={t('adminNotesOptional')}
+                                            value={adminNotes[req.id] || ''}
+                                            onChange={e => setAdminNotes(prev => ({...prev, [req.id]: e.target.value}))}
+                                            rows={1}
+                                            className="flex-grow !text-xs sm:!text-sm !py-1 sm:!py-1.5"
+                                        />
+                                        <Button onClick={() => handleReject(req.id)} variant="danger" size="sm" isLoading={processingRequest === req.id} className="flex-shrink-0 !text-xs sm:!text-sm">{t('reject')}</Button>
+                                    </div>
                                 </div>
                             </div>
                         </Card>
                     ))}
                 </div>
             )}
-            {viewingPost && currentUser && ( <AdminViewTransformationPostModal isOpen={!!viewingPost} onClose={() => setViewingPost(null)} post={viewingPost} currentAdminId={currentUser.id} onCommentDeleted={handleCommentAction} /> )}
         </div>
     );
 };
 
-interface AdminViewTransformationPostModalProps { isOpen: boolean; onClose: () => void; post: TransformationPost; currentAdminId: string; onCommentDeleted: () => Promise<void>; }
-const AdminViewTransformationPostModal: React.FC<AdminViewTransformationPostModalProps> = ({ isOpen, onClose, post, currentAdminId, onCommentDeleted }) => {
+// Send Global Notification Section
+const SendGlobalNotificationSection: React.FC = () => {
     const { t } = useLocalization();
-    const [comments, setComments] = useState<TransformationComment[]>([]);
-    const [loadingComments, setLoadingComments] = useState(false);
+    const { currentUser, isSiteManager } = useAuth();
+    const [message, setMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [feedback, setFeedback] = useState({ type: '', message: '' });
 
-    useEffect(() => {
-        const fetchComments = async () => {
-            if (isOpen) {
-                setLoadingComments(true);
-                try {
-                    const fetchedComments = await DataService.getCommentsForPost(post.id);
-                    setComments(fetchedComments);
-                } catch (error) { console.error("Error fetching comments for admin view:", error); }
-                setLoadingComments(false);
-            }
-        };
-        fetchComments();
-    }, [isOpen, post.id]);
-
-    const handleDeleteComment = async (commentId: string) => {
-        if(window.confirm(t('confirmDeleteComment', 'هل أنت متأكد أنك تريد حذف هذا التعليق؟'))) {
-            setLoadingComments(true);
-            try {
-                await DataService.deleteTransformationComment(commentId, currentAdminId);
-                const updatedComments = await DataService.getCommentsForPost(post.id); // Refresh comments list
-                setComments(updatedComments);
-                await onCommentDeleted(); // Trigger parent re-fetch for comment count
-            } catch (error: any) { alert(error.message || t('errorOccurred')); }
-            setLoadingComments(false);
-        }
+    const showFeedback = (type: 'success' | 'error', messageKey: string) => {
+        setFeedback({ type, message: t(messageKey) });
+        setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
     };
 
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!currentUser || !isSiteManager || !message.trim()) return;
+        setIsLoading(true);
+        try {
+            await DataService.addGlobalNotification(message, currentUser.id);
+            showFeedback('success', 'notificationSentSuccess');
+            setMessage('');
+        } catch (error) {
+            console.error("Error sending notification:", error);
+            showFeedback('error', 'errorOccurred');
+        }
+        setIsLoading(false);
+    };
+
+    if (!isSiteManager) return <p>{t('adminAccessOnly')}</p>;
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`${t('viewPostDetails')}: ${post.title}`} size="2xl">
-           <div className="max-h-[80vh] overflow-y-auto p-1">
-                <p className="text-slate-300 text-sm sm:text-base mb-3 sm:mb-4 whitespace-pre-line">{post.title}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4">
-                    <div> <h4 className="text-sm font-semibold text-slate-400 mb-1">{t('beforePhoto', 'الصورة قبل')}</h4> <img src={post.beforeImageUrl} alt={t('beforePhoto', 'الصورة قبل')} className="w-full rounded-lg shadow-md object-contain max-h-64 sm:max-h-80" /> </div>
-                    <div> <h4 className="text-sm font-semibold text-slate-400 mb-1">{t('afterPhoto', 'الصورة بعد')}</h4> <img src={post.afterImageUrl} alt={t('afterPhoto', 'الصورة بعد')} className="w-full rounded-lg shadow-md object-contain max-h-64 sm:max-h-80" /> </div>
-                </div>
-                <p className="text-xs text-slate-400 mb-2"> {t('user')}: {post.userName} | {post.likes.length} {t('likes')} | {post.commentsCount} {t('comments')}</p>
-                <h4 className="text-md sm:text-lg font-semibold text-white mb-2 sm:mb-3 border-t border-slate-700 pt-3">{t('comments', 'التعليقات')}</h4>
-                <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-60 overflow-y-auto pr-1">
-                    {loadingComments ? <Spinner className="mx-auto" /> : comments.length === 0 ? <p className="text-slate-400 text-xs sm:text-sm">{t('noCommentsYet', 'لا توجد تعليقات بعد.')}</p> : 
-                    comments.map(comment => (
-                        <div key={comment.id} className={`p-2 sm:p-2.5 rounded-lg bg-slate-700`}>
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center mb-1">
-                                    {comment.userProfileImage ? ( <img src={comment.userProfileImage} alt={comment.userName} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover me-1.5 sm:me-2" /> ) : ( <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-${THEME_COLORS.secondary} flex items-center justify-center text-black font-semibold text-xs me-1.5 sm:me-2`}> {comment.userName.charAt(0).toUpperCase()} </div> )}
-                                    <div> <p className="text-xs sm:text-sm font-semibold text-slate-200">{comment.userName}</p> <p className="text-xs text-slate-500">{new Date(comment.createdAt).toLocaleDateString('ar-EG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p> </div>
-                                </div>
-                                <Button onClick={() => handleDeleteComment(comment.id)} variant="danger" size="xs" isLoading={loadingComments} className="!p-1"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 sm:w-3.5 sm:h-3.5"><path fillRule="evenodd" d="M5 3.25V4H2.75a.75.75 0 000 1.5h.31l.421 8.424A2.25 2.25 0 005.731 16h4.538a2.25 2.25 0 002.25-2.076L12.941 5.5h.31a.75.75 0 000-1.5H11v-.75A2.25 2.25 0 008.75 1h-1.5A2.25 2.25 0 005 3.25zm2.25-.75c0-.414.336-.75.75-.75h1.5a.75.75 0 01.75.75V4h-3V2.5zM7.25 7a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 017.25 7zM10 7.75a.75.75 0 00-1.5 0v4.5a.75.75 0 001.5 0v-4.5z" clipRule="evenodd" /></svg> </Button>
-                            </div>
-                            <p className="text-slate-300 text-xs sm:text-sm ps-8 sm:ps-9 whitespace-pre-line">{comment.text}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </Modal>
+        <div>
+            <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary} mb-4 sm:mb-6`}>{t('sendGlobalNotification')}</h2>
+            {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                <Textarea
+                    label={t('notificationMessage')}
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    required
+                    rows={4}
+                />
+                <Button type="submit" isLoading={isLoading} size="md" variant="primary">
+                    {t('sendToAllUsers')}
+                </Button>
+            </form>
+        </div>
     );
 };
 
-export default AdminPage;
+// Manage Transformations Section
+const ManageTransformationsSection: React.FC = () => {
+    const { t } = useLocalization();
+    const { currentUser } = useAuth();
+    const [posts, setPosts] = useState<TransformationPost[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [feedback, setFeedback] = useState({ type: '', message: '' });
+
+    const fetchPosts = async () => {
+        setLoading(true);
+        try {
+            const fetchedPosts = await DataService.getTransformationPosts();
+            setPosts(fetchedPosts.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        } catch (error) {
+            console.error("Error fetching transformation posts:", error);
+            showFeedback('error', 'errorOccurred');
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchPosts();
+    }, []);
+
+    const showFeedback = (type: 'success' | 'error', messageKey: string) => {
+        setFeedback({ type, message: t(messageKey) });
+        setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
+    };
+
+    const handleDeletePost = async (postId: string) => {
+        if (!currentUser) return;
+        if (window.confirm(t('confirmDeletePost'))) {
+            setLoading(true);
+            try {
+                await DataService.deleteTransformationPost(postId, currentUser.id);
+                showFeedback('success', 'postDeletedSuccess');
+                await fetchPosts(); // Refresh list
+            } catch (error: any) {
+                console.error("Error deleting post:", error);
+                showFeedback('error', error.message || 'errorOccurred');
+            }
+            setLoading(false);
+        }
+    };
+    
+    if (loading) return <LoadingOverlay message={t('loading')} />;
+
+    return (
+        <div>
+            <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.textPrimary} mb-4 sm:mb-6`}>{t('manageTransformations')}</h2>
+            {feedback.message && <p className={`mb-4 p-3 rounded text-sm ${feedback.type === 'success' ? `bg-${THEME_COLORS.success} bg-opacity-20 text-green-300` : `bg-${THEME_COLORS.error} bg-opacity-20 text-red-300`}`}>{feedback.message}</p>}
+
+            {posts.length === 0 ? (
+                <p className={`text-${THEME_COLORS.textSecondary} text-center py-8`}>{t('noTransformationsPosted')}</p>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    {posts.map(post => (
+                        <Card key={post.id} className="p-0 overflow-hidden">
+                            <div className="grid grid-cols-2">
+                                <img src={post.beforeImageUrl} alt={t('beforePhoto')} className="w-full h-32 sm:h-48 object-cover"/>
+                                <img src={post.afterImageUrl} alt={t('afterPhoto')} className="w-full h-32 sm:h-48 object-cover"/>
+                            </div>
+                            <div className="p-3 sm:p-4">
+                                <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary} mb-1`}>{post.title}</h3>
+                                <p className="text-xs text-slate-400 mb-0.5">{t('user')}: {post.userName}</p>
+                                <p className="text-xs text-slate-500 mb-2">{t('postedOn', 'نُشر في')}: {new Date(post.createdAt).toLocaleDateString('ar-EG')}</p>
+                                <div className="flex justify-between items-center text-xs text-slate-400 mb-3">
+                                    <span>{t('likes')}: {post.likes?.length || 0}</span>
+                                    <span>{t('comments')}: {post.commentsCount || 0}</span>
+                                </div>
+                                <Button onClick={() => handleDeletePost(post.id)} variant="danger" size="sm" className="w-full !text-xs sm:!text-sm">
+                                    {t('deletePost')}
+                                </Button>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};

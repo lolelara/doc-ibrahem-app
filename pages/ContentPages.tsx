@@ -53,7 +53,7 @@ const WorkoutsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-white text-center">{t('workoutVideos')}</h1>
+      <h1 className={`text-2xl sm:text-3xl font-bold text-${THEME_COLORS.textPrimary} text-center`}>{t('workoutVideos')}</h1>
       <div className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 mb-4 sm:mb-6">
         <Input 
           type="text" 
@@ -65,7 +65,7 @@ const WorkoutsPage: React.FC = () => {
         <select 
           value={categoryFilter} 
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className={`bg-slate-700 border border-slate-600 text-white text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5 w-full sm:w-auto`}
+          className={`bg-slate-800 border border-slate-700 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5 w-full sm:w-auto`}
         >
           <option value="">{t('allCategories', 'جميع الفئات')}</option>
           {categories.map(cat => <option key={cat} value={cat}>{t(cat.toLowerCase(), cat)}</option>)}
@@ -78,7 +78,7 @@ const WorkoutsPage: React.FC = () => {
           ))}
         </div>
       ) : (
-        <p className="text-center text-slate-400 py-6 sm:py-8">{t('noVideosFound', 'لم يتم العثور على فيديوهات تطابق بحثك.')}</p>
+        <p className={`text-center text-${THEME_COLORS.textSecondary} py-6 sm:py-8`}>{t('noVideosFound', 'لم يتم العثور على فيديوهات تطابق بحثك.')}</p>
       )}
     </div>
   );
@@ -95,8 +95,8 @@ const WorkoutVideoCard: React.FC<WorkoutVideoCardProps> = ({ video, onClick }) =
       <img src={video.thumbnailUrl || `https://picsum.photos/seed/${video.id}/400/225`} alt={video.title} className="w-full h-40 sm:h-48 object-cover rounded-t-xl"/>
       <div className="p-3 sm:p-4 flex flex-col flex-grow">
         <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary} mb-1 sm:mb-2`}>{video.title}</h3>
-        <p className="text-slate-300 text-xs sm:text-sm mb-2 flex-grow">{video.description.substring(0,100)}{video.description.length > 100 ? '...' : ''}</p>
-        <div className="flex justify-between items-center text-xs text-slate-400 mt-auto">
+        <p className={`text-${THEME_COLORS.textSecondary} text-xs sm:text-sm mb-2 flex-grow`}>{video.description.substring(0,100)}{video.description.length > 100 ? '...' : ''}</p>
+        <div className={`flex justify-between items-center text-xs text-${THEME_COLORS.textSecondary} opacity-80 mt-auto`}> {/* Slightly more muted text for meta */}
           <span>{t('duration', 'المدة')}: {video.durationMinutes} {t('minutes', 'دقائق')}</span>
           <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 bg-${THEME_COLORS.accent} bg-opacity-20 text-${THEME_COLORS.accent} rounded-full text-xs`}>{t(video.category.toLowerCase(), video.category)}</span>
         </div>
@@ -147,10 +147,10 @@ const VideoDetailPage: React.FC = () => {
                 </iframe>
             </div>
             <Card className="p-3 sm:p-4 md:p-6">
-                <p className="text-slate-300 text-sm sm:text-base mb-1 sm:mb-2"><strong className="font-semibold">{t('category', 'الفئة')}:</strong> {t(video.category.toLowerCase(), video.category)}</p>
-                <p className="text-slate-300 text-sm sm:text-base mb-2 sm:mb-4"><strong className="font-semibold">{t('duration', 'المدة')}:</strong> {video.durationMinutes} {t('minutes', 'دقائق')}</p>
-                <h2 className="text-lg sm:text-xl font-semibold text-white mb-1 sm:mb-2">{t('videoDisplayDescriptionLabel', 'الوصف')}:</h2>
-                <p className="text-slate-300 text-sm sm:text-base whitespace-pre-line">{video.description}</p>
+                <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base mb-1 sm:mb-2`}><strong className={`font-semibold text-${THEME_COLORS.textPrimary}`}>{t('category', 'الفئة')}:</strong> {t(video.category.toLowerCase(), video.category)}</p>
+                <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base mb-2 sm:mb-4`}><strong className={`font-semibold text-${THEME_COLORS.textPrimary}`}>{t('duration', 'المدة')}:</strong> {video.durationMinutes} {t('minutes', 'دقائق')}</p>
+                <h2 className={`text-lg sm:text-xl font-semibold text-${THEME_COLORS.textPrimary} mb-1 sm:mb-2`}>{t('videoDisplayDescriptionLabel', 'الوصف')}:</h2>
+                <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base whitespace-pre-line`}>{video.description}</p>
             </Card>
         </div>
     );
@@ -190,7 +190,7 @@ const NutritionPage: React.FC = () => {
 
   return (
     <div className="space-y-8 sm:space-y-12">
-      <h1 className="text-3xl sm:text-4xl font-bold text-white text-center mb-8 sm:mb-12">{t('nutrition')}</h1>
+      <h1 className={`text-3xl sm:text-4xl font-bold text-${THEME_COLORS.textPrimary} text-center mb-8 sm:mb-12`}>{t('nutrition')}</h1>
       
       <section>
         <h2 className="text-2xl sm:text-3xl font-semibold text-emerald-400 mb-4 sm:mb-6">{t('recipes')}</h2>
@@ -205,7 +205,7 @@ const NutritionPage: React.FC = () => {
             <select 
             value={categoryFilter} 
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className={`bg-slate-700 border border-slate-600 text-white text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5 w-full sm:w-auto`}
+            className={`bg-slate-800 border border-slate-700 text-${THEME_COLORS.textPrimary} text-xs sm:text-sm rounded-lg focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} block p-2 sm:p-2.5 w-full sm:w-auto`}
             >
             <option value="">{t('allCategories', 'جميع الفئات')}</option>
             {categories.map(cat => <option key={cat} value={cat}>{t(cat.toLowerCase(), cat)}</option>)}
@@ -218,12 +218,12 @@ const NutritionPage: React.FC = () => {
             ))}
           </div>
         ) : (
-          <p className="text-center text-slate-400 py-6 sm:py-8">{t('noRecipesFound', 'لم يتم العثور على وصفات تطابق بحثك.')}</p>
+          <p className={`text-center text-${THEME_COLORS.textSecondary} py-6 sm:py-8`}>{t('noRecipesFound', 'لم يتم العثور على وصفات تطابق بحثك.')}</p>
         )}
       </section>
 
       <section>
-        <h2 className="text-2xl sm:text-3xl font-semibold text-sky-400 mb-4 sm:mb-6">{t('calorieCalculator')}</h2>
+        <h2 className={`text-2xl sm:text-3xl font-semibold text-${THEME_COLORS.primary} mb-4 sm:mb-6`}>{t('calorieCalculator')}</h2> {/* Changed color */}
         <CalorieTracker /> 
       </section>
 
@@ -252,8 +252,8 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelectRecipe }) => {
       <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.id}/400/300`} alt={recipe.name} className="w-full h-40 sm:h-56 object-cover rounded-t-xl"/>
       <div className="p-3 sm:p-4 flex flex-col flex-grow">
         <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary} mb-1 sm:mb-2`}>{recipe.name}</h3>
-        <p className="text-slate-300 text-xs sm:text-sm mb-2 flex-grow">{recipe.description.substring(0,100)}{recipe.description.length > 100 ? '...' : ''}</p>
-        <div className="mt-auto text-xs text-slate-400">
+        <p className={`text-${THEME_COLORS.textSecondary} text-xs sm:text-sm mb-2 flex-grow`}>{recipe.description.substring(0,100)}{recipe.description.length > 100 ? '...' : ''}</p>
+        <div className={`mt-auto text-xs text-${THEME_COLORS.textSecondary} opacity-80`}> {/* Slightly more muted meta */}
           <p>{t('prepTime', 'وقت التحضير')}: {recipe.prepTimeMinutes} {t('minutes', 'دقائق')}</p>
           <p>{t('cookTime', 'وقت الطهي')}: {recipe.cookTimeMinutes} {t('minutes', 'دقائق')}</p>
           <p>{t('servings', 'حصص')}: {recipe.servings}</p>
@@ -270,24 +270,24 @@ const RecipeDetail: React.FC<{recipe: Recipe}> = ({recipe}) => {
     return (
         <div className="space-y-3 sm:space-y-4 max-h-[70vh] overflow-y-auto p-1">
             <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.id}/600/400`} alt={recipe.name} className="w-full h-48 sm:h-64 object-cover rounded-lg mb-3 sm:mb-4"/>
-            <p className="text-slate-300 text-sm sm:text-base">{recipe.description}</p>
+            <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base`}>{recipe.description}</p>
             
-            <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-slate-300">
-                <p><strong>{t('prepTime', 'وقت التحضير')}:</strong> {recipe.prepTimeMinutes} {t('minutes', 'دقائق')}</p>
-                <p><strong>{t('cookTime', 'وقت الطهي')}:</strong> {recipe.cookTimeMinutes} {t('minutes', 'دقائق')}</p>
-                <p><strong>{t('servings', 'حصص')}:</strong> {recipe.servings}</p>
-                {recipe.calories && <p><strong>{t('calories', 'السعرات')}:</strong> {recipe.calories} {t('perServing', 'لكل حصة')}</p>}
+            <div className={`grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-${THEME_COLORS.textSecondary}`}>
+                <p><strong className={`text-${THEME_COLORS.textPrimary}`}>{t('prepTime', 'وقت التحضير')}:</strong> {recipe.prepTimeMinutes} {t('minutes', 'دقائق')}</p>
+                <p><strong className={`text-${THEME_COLORS.textPrimary}`}>{t('cookTime', 'وقت الطهي')}:</strong> {recipe.cookTimeMinutes} {t('minutes', 'دقائق')}</p>
+                <p><strong className={`text-${THEME_COLORS.textPrimary}`}>{t('servings', 'حصص')}:</strong> {recipe.servings}</p>
+                {recipe.calories && <p><strong className={`text-${THEME_COLORS.textPrimary}`}>{t('calories', 'السعرات')}:</strong> {recipe.calories} {t('perServing', 'لكل حصة')}</p>}
             </div>
 
             <div>
-                <h4 className="text-md sm:text-lg font-semibold text-white mt-3 sm:mt-4 mb-1 sm:mb-2">{t('ingredients')}</h4>
-                <ul className="list-disc list-inside text-slate-300 space-y-1 text-xs sm:text-sm">
+                <h4 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.textPrimary} mt-3 sm:mt-4 mb-1 sm:mb-2`}>{t('ingredients')}</h4>
+                <ul className={`list-disc list-inside text-${THEME_COLORS.textSecondary} space-y-1 text-xs sm:text-sm`}>
                     {recipe.ingredients.map((ing, index) => <li key={index}>{ing.quantity} {ing.item}</li>)}
                 </ul>
             </div>
             <div>
-                <h4 className="text-md sm:text-lg font-semibold text-white mt-3 sm:mt-4 mb-1 sm:mb-2">{t('instructions')}</h4>
-                <ol className="list-decimal list-inside text-slate-300 space-y-1 text-xs sm:text-sm">
+                <h4 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.textPrimary} mt-3 sm:mt-4 mb-1 sm:mb-2`}>{t('instructions')}</h4>
+                <ol className={`list-decimal list-inside text-${THEME_COLORS.textSecondary} space-y-1 text-xs sm:text-sm`}>
                     {recipe.instructions.map((step, index) => <li key={index}>{step}</li>)}
                 </ol>
             </div>
@@ -297,8 +297,6 @@ const RecipeDetail: React.FC<{recipe: Recipe}> = ({recipe}) => {
 
 const CalorieTracker: React.FC = () => {
   const { t } = useLocalization();
-  // This component's state remains local as it doesn't persist data beyond the session.
-  // If it needed to persist, items would be fetched/saved via DataService.
   const [items, setItems] = useState<CalorieIntakeItem[]>([]);
   const [foodItem, setFoodItem] = useState('');
   const [calories, setCalories] = useState<number | ''>('');
@@ -348,8 +346,8 @@ const CalorieTracker: React.FC = () => {
       {items.length > 0 && (
         <div className="space-y-1.5 sm:space-y-2 mb-4 max-h-52 sm:max-h-60 overflow-y-auto">
           {items.map(item => (
-            <div key={item.id} className="flex justify-between items-center p-1.5 sm:p-2 bg-slate-700 rounded">
-              <span className="text-white text-xs sm:text-sm">{item.foodItem}</span>
+            <div key={item.id} className="flex justify-between items-center p-1.5 sm:p-2 bg-slate-800 rounded"> {/* Changed background */}
+              <span className={`text-${THEME_COLORS.textPrimary} text-xs sm:text-sm`}>{item.foodItem}</span>
               <div className="flex items-center gap-1 sm:gap-2">
                 <span className={`text-amber-400 text-xs sm:text-sm`}>{item.calories} {t('calUnit', 'سعر حراري')}</span>
                 <Button onClick={() => handleDeleteItem(item.id)} variant="danger" size="sm" className="!p-1 !text-xs">
@@ -362,7 +360,7 @@ const CalorieTracker: React.FC = () => {
           ))}
         </div>
       )}
-      <p className="text-lg sm:text-xl font-semibold text-white text-center">{t('totalCalories')}: <span className="text-amber-400">{totalCalories}</span> {t('calUnit', 'سعر حراري')}</p>
+      <p className={`text-lg sm:text-xl font-semibold text-${THEME_COLORS.textPrimary} text-center`}>{t('totalCalories')}: <span className="text-amber-400">{totalCalories}</span> {t('calUnit', 'سعر حراري')}</p>
     </Card>
   );
 };
@@ -409,8 +407,8 @@ const NutritionAIAssistant: React.FC = () => {
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[70%] p-2 sm:p-3 rounded-lg shadow ${
               msg.role === 'user' ? `bg-${THEME_COLORS.primary} text-white` : 
-              msg.role === 'assistant' ? 'bg-slate-700 text-slate-200' : 
-              'bg-red-700 text-red-200' 
+              msg.role === 'assistant' ? 'bg-slate-700 text-slate-100' : // Assistant text brighter
+              'bg-red-700 text-red-100' // System error text brighter
             }`}>
               <p className="text-xs sm:text-sm whitespace-pre-wrap">{msg.content}</p>
               <p className="text-xs opacity-70 mt-1 text-right">{new Date(msg.timestamp).toLocaleTimeString('ar-EG', {hour: '2-digit', minute: '2-digit'})}</p>
@@ -419,7 +417,7 @@ const NutritionAIAssistant: React.FC = () => {
         ))}
         {isLoading && (
             <div className="flex justify-start">
-                <div className="max-w-[70%] p-2 sm:p-3 rounded-lg shadow bg-slate-700 text-slate-200">
+                <div className="max-w-[70%] p-2 sm:p-3 rounded-lg shadow bg-slate-700 text-slate-100"> {/* Assistant text brighter */}
                     <Spinner size="sm" className="me-2 inline-block"/> {t('aiThinking')}
                 </div>
             </div>
@@ -445,13 +443,13 @@ const NutritionAIAssistant: React.FC = () => {
 };
 
 
-const LoadingOverlay: React.FC<{ message?: string }> = ({ message }) => { // Kept local as it's a generic UI util
+const LoadingOverlay: React.FC<{ message?: string }> = ({ message }) => { 
   const { t } = useLocalization();
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 bg-opacity-80">
+    <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-${THEME_COLORS.background} bg-opacity-80`}>
       <Spinner size="lg" />
-      {message && <p className="mt-4 text-md sm:text-lg text-white">{message}</p>}
-      {!message && <p className="mt-4 text-md sm:text-lg text-white">{t('loading')}</p>}
+      {message && <p className={`mt-4 text-md sm:text-lg text-${THEME_COLORS.textPrimary}`}>{message}</p>}
+      {!message && <p className={`mt-4 text-md sm:text-lg text-${THEME_COLORS.textPrimary}`}>{t('loading')}</p>}
     </div>
   );
 };

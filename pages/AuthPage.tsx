@@ -34,7 +34,7 @@ const AuthPage: React.FC = () => {
         </div>
         {isLoginView ? <LoginForm /> : <RegisterForm />}
         <div className="text-xs sm:text-sm text-center">
-          <button onClick={toggleView} className={`font-medium text-${THEME_COLORS.secondary} hover:text-${THEME_COLORS.secondaryHover}`}>
+          <button onClick={toggleView} className={`font-medium text-${THEME_COLORS.primary} hover:text-${THEME_COLORS.primaryHover}`}> {/* Changed to primary for better visibility */}
             {isLoginView ? t('noAccountPrompt', 'ليس لديك حساب؟ سجل الآن') : t('hasAccountPrompt', 'لديك حساب بالفعل؟ سجل الدخول')}
           </button>
         </div>
@@ -164,7 +164,7 @@ const RegisterForm: React.FC = () => {
           value={country} 
           onChange={e => setCountry(e.target.value)} 
           required
-          className={`block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-white`}
+          className={`block w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-${THEME_COLORS.textPrimary}`}
         >
           {COUNTRIES_LIST.map(c => (
             <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option>
@@ -220,7 +220,7 @@ const FeaturedTransformationsSection: React.FC = () => {
     if (topPosts.length === 0) {
         return (
             <div className="mt-12 text-center">
-                <h3 className="text-xl sm:text-2xl font-semibold text-sky-400 mb-4">{t('topTransformations')}</h3>
+                <h3 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.primary} mb-4`}>{t('topTransformations')}</h3>
                 <p className="text-slate-400">{t('noTransformationsPosted')}</p>
             </div>
         );
@@ -232,7 +232,7 @@ const FeaturedTransformationsSection: React.FC = () => {
 
     return (
         <div className="w-full max-w-5xl mx-auto mt-10 mb-6">
-            <h3 className="text-xl sm:text-2xl font-semibold text-center text-sky-400 mb-4 sm:mb-6">{t('topTransformations')}</h3>
+            <h3 className={`text-xl sm:text-2xl font-semibold text-center text-${THEME_COLORS.primary} mb-4 sm:mb-6`}>{t('topTransformations')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                 {topPosts.map(post => (
                     <Card key={post.id} className="p-0 overflow-hidden group" onClick={() => handleViewPost(post.id)}>
@@ -245,7 +245,7 @@ const FeaturedTransformationsSection: React.FC = () => {
                             <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-50 group-hover:opacity-70 transition-opacity"></div>
                         </div>
                         <div className="p-2 sm:p-3">
-                            <h4 className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-sky-300 transition-colors" title={post.title}>{post.title}</h4>
+                            <h4 className={`text-xs sm:text-sm font-semibold text-${THEME_COLORS.textPrimary} truncate group-hover:text-${THEME_COLORS.primary} transition-colors`} title={post.title}>{post.title}</h4>
                             <p className="text-xs text-slate-400 truncate mb-1">{t('user')}: {post.userName}</p>
                             <div className="flex justify-between items-center text-xs text-slate-500">
                                 <span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 inline-block me-0.5"><path d="M8.243 2.253a.75.75 0 0 0-1.061 0L2.625 6.81a1.313 1.313 0 0 0-.027 1.652L4 9.755V13.5a.75.75 0 0 0 .75.75h6.5a.75.75 0 0 0 .75-.75V9.755l1.402-1.293a1.313 1.313 0 0 0-.027-1.652L8.243 2.253zM5.5 12.75v-2.55l-1.92 1.773A.563.563 0 0 1 3.5 11.563V9.92L7.72 6.058a.75.75 0 0 1 1.06 0L13.5 10.793V13.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75V11.5a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0-.75.75v2.25a.75.75 0 0 1-.75.75h-1.5z" /></svg> {post.likes?.length || 0}</span>

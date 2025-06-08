@@ -1,5 +1,5 @@
 
-import React, { ReactNode, useContext } from 'react';
+import React, { ReactNode, useContext, forwardRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthContext, useLocalization, LocalizationContext } from '../App'; 
 import { THEME_COLORS, AR_TRANSLATIONS } from '../constants';
@@ -12,7 +12,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', size = 'md', isLoading = false, className = '', ...props }) => {
-  const baseStyle = 'font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 ease-in-out transform hover:scale-105 focus:scale-105 active:scale-95 flex items-center justify-center shadow-sm hover:shadow-md focus:shadow-md'; // Updated shadow
+  const baseStyle = 'font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 ease-in-out transform hover:scale-105 focus:scale-105 active:scale-95 flex items-center justify-center shadow-sm hover:shadow-md focus:shadow-md'; // Updated focus:ring-offset-slate-900 (new surface)
   
   let variantStyle = '';
   switch (variant) {
@@ -20,7 +20,7 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', s
       variantStyle = `bg-${THEME_COLORS.primary} hover:bg-${THEME_COLORS.primaryHover} text-white focus:ring-${THEME_COLORS.primary}`;
       break;
     case 'secondary':
-      variantStyle = `bg-${THEME_COLORS.secondary} hover:bg-${THEME_COLORS.secondaryHover} text-black focus:ring-${THEME_COLORS.secondary}`; 
+      variantStyle = `bg-${THEME_COLORS.secondary} hover:bg-${THEME_COLORS.secondaryHover} text-slate-100 border border-slate-600 focus:ring-${THEME_COLORS.secondaryHover}`; 
       break;
     case 'accent':
       variantStyle = `bg-${THEME_COLORS.accent} hover:bg-${THEME_COLORS.accentHover} text-white focus:ring-${THEME_COLORS.accent}`;
@@ -29,13 +29,13 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', s
       variantStyle = `bg-${THEME_COLORS.error} hover:bg-red-600 text-white focus:ring-${THEME_COLORS.error}`;
       break;
     case 'ghost':
-      variantStyle = `bg-transparent hover:bg-slate-700 text-${THEME_COLORS.textSecondary} focus:ring-slate-500 border border-slate-600 shadow-none hover:shadow-none`;
+      variantStyle = `bg-transparent hover:bg-slate-700 text-${THEME_COLORS.textSecondary} focus:ring-slate-500 border border-slate-700 shadow-none hover:shadow-none`;
       break;
   }
 
   let sizeStyle = '';
   switch (size) {
-    case 'xs': sizeStyle = 'px-2 py-1 text-xs'; break; // New extra small size
+    case 'xs': sizeStyle = 'px-2 py-1 text-xs'; break; 
     case 'sm': sizeStyle = 'px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-xs'; break;
     case 'md': sizeStyle = 'px-4 py-2 text-sm sm:px-5 sm:py-2.5'; break;
     case 'lg': sizeStyle = 'px-6 py-3 text-base'; break;
@@ -60,7 +60,7 @@ export const Input: React.FC<InputProps> = ({ label, id, error, className = '', 
       {label && <label htmlFor={id} className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1 sm:mb-1.5`}>{label}</label>}
       <input
         id={id}
-        className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-700 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-600`} rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-${THEME_COLORS.textPrimary} transition-colors duration-150 ${className}`} // Updated text color
+        className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-800 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-700`} rounded-lg shadow-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-${THEME_COLORS.textPrimary} transition-colors duration-150 ${className}`}
         {...props}
       />
       {error && <p className="mt-1 sm:mt-1.5 text-xs text-red-400">{error}</p>}
@@ -72,20 +72,24 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
   label?: string;
   error?: string;
 }
-export const Textarea: React.FC<TextareaProps> = ({ label, id, error, className = '', ...props }) => {
-  return (
-    <div className="w-full">
-      {label && <label htmlFor={id} className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1 sm:mb-1.5`}>{label}</label>}
-      <textarea
-        id={id}
-        rows={props.rows || 3} // Default to 3 rows if not specified
-        className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-700 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-600`} rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-${THEME_COLORS.textPrimary} transition-colors duration-150 ${className}`} // Updated text color
-        {...props}
-      />
-      {error && <p className="mt-1 sm:mt-1.5 text-xs text-red-400">{error}</p>}
-    </div>
-  );
-};
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ label, id, error, className = '', ...props }, ref) => {
+    return (
+      <div className="w-full">
+        {label && <label htmlFor={id} className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1 sm:mb-1.5`}>{label}</label>}
+        <textarea
+          id={id}
+          ref={ref}
+          rows={props.rows || 3} 
+          className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-800 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-700`} rounded-lg shadow-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-${THEME_COLORS.textPrimary} transition-colors duration-150 ${className}`}
+          {...props}
+        />
+        {error && <p className="mt-1 sm:mt-1.5 text-xs text-red-400">{error}</p>}
+      </div>
+    );
+  }
+);
+Textarea.displayName = 'Textarea';
 
 
 interface ModalProps {
@@ -133,12 +137,9 @@ interface CardProps {
 
 export const Card: React.FC<CardProps> = ({ children, className = '', onClick }) => {
   const hoverEffect = onClick ? `hover:shadow-2xl hover:border-${THEME_COLORS.primary} cursor-pointer transform hover:-translate-y-1` : 'shadow-xl';
-  // Default padding can be added here if most cards need it, e.g. p-3 sm:p-4 md:p-6
-  // Or let the parent component control padding via className for more flexibility.
-  // For now, keeping it as provided, padding is usually applied where Card is used.
   return (
     <div 
-      className={`bg-${THEME_COLORS.surface} rounded-xl overflow-hidden border border-slate-700 transition-all duration-300 ease-out ${hoverEffect} ${className}`}
+      className={`bg-${THEME_COLORS.surface} rounded-xl overflow-hidden border border-slate-800 transition-all duration-300 ease-out ${hoverEffect} ${className}`}
       onClick={onClick}
     >
       {children}

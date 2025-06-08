@@ -7,7 +7,7 @@ import { APP_NAME, AR_TRANSLATIONS, THEME_COLORS, ADMIN_EMAIL } from './constant
 import AuthPage from './pages/AuthPage';
 import UserPages from './pages/UserPages';
 import ContentPages from './pages/ContentPages';
-import AdminPage from './pages/AdminPage';
+import AdminPage from './pages/AdminPage'; // Changed from { AdminPage }
 import { TransformationsPage } from './pages/TransformationsPage';
 import { Spinner, LoadingOverlay, Button, ProtectedRoute } from './components/CommonUI';
 
@@ -205,7 +205,7 @@ const App: React.FC = () => {
     }}>
       <LocalizationContext.Provider value={{ language, setLanguage, translations: language === 'ar' ? AR_TRANSLATIONS : AR_TRANSLATIONS, t: tAppScope }}>
         <HashRouter>
-          <div className="min-h-screen flex flex-col bg-slate-900">
+          <div className={`min-h-screen flex flex-col bg-${THEME_COLORS.background}`}>
             <Navbar />
             <main className="flex-grow container mx-auto px-2 xs:px-4 py-6 sm:py-8">
               <Routes>
@@ -258,12 +258,12 @@ const Navbar: React.FC = () => {
 
   const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-1.5 sm:gap-2 px-2.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ease-in-out transform hover:scale-105 focus:scale-105 active:scale-95 ${
-      isActive ? `bg-${THEME_COLORS.primary} text-white shadow-md` : `text-slate-300 hover:bg-slate-700 hover:text-white`
+      isActive ? `bg-${THEME_COLORS.primary} text-white shadow-md` : `text-slate-300 hover:bg-slate-700 hover:text-slate-100` // Updated hover text
     }`;
   
   const mobileNavLinkClasses = ({ isActive }: { isActive: boolean }) =>
     `block w-full text-right rtl:text-left px-3 py-3 rounded-md text-base font-medium ${
-      isActive ? `bg-${THEME_COLORS.primary} text-white` : `text-slate-300 hover:bg-slate-700 hover:text-white`
+      isActive ? `bg-${THEME_COLORS.primary} text-white` : `text-slate-300 hover:bg-slate-700 hover:text-slate-100` // Updated hover text
     }`;
 
 
@@ -307,7 +307,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center">
             {currentUser && (
                 <div className="relative" ref={notificationRef}>
-                    <button onClick={toggleNotifications} className={`p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-${THEME_COLORS.primary} transition-colors`}>
+                    <button onClick={toggleNotifications} className={`p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-slate-100 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-${THEME_COLORS.surface} focus:ring-${THEME_COLORS.primary} transition-colors`}>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                     </svg>
@@ -318,9 +318,9 @@ const Navbar: React.FC = () => {
                     )}
                     </button>
                     {showNotifications && (
-                    <div className={`absolute right-0 rtl:left-0 rtl:right-auto mt-2 w-64 xs:w-72 sm:w-80 md:w-96 bg-${THEME_COLORS.surface} border border-slate-700 rounded-lg shadow-2xl overflow-hidden z-50`}>
+                    <div className={`absolute right-0 rtl:left-0 rtl:right-auto mt-2 w-64 xs:w-72 sm:w-80 md:w-96 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl overflow-hidden z-50`}> {/* Changed bg to slate-800 for pop */}
                         <div className={`p-2 sm:p-3 flex justify-between items-center border-b border-slate-700 bg-slate-700`}>
-                        <h3 className="font-semibold text-white text-sm sm:text-base">{t('notifications')}</h3>
+                        <h3 className="font-semibold text-slate-100 text-sm sm:text-base">{t('notifications')}</h3>
                         {unreadNotifications.length > 0 && 
                             <Button onClick={markAllNotificationsAsRead} variant="ghost" size="sm" className={`text-xs !px-1.5 sm:!px-2 !py-0.5 sm:!py-1 border-${THEME_COLORS.primary} text-${THEME_COLORS.primary}`}>{t('markAllAsRead')}</Button>
                         }
@@ -331,10 +331,10 @@ const Navbar: React.FC = () => {
                         <ul className="max-h-60 sm:max-h-80 overflow-y-auto divide-y divide-slate-700">
                             {unreadNotifications.map(notification => (
                             <li key={notification.id} className="p-2 sm:p-3 hover:bg-slate-700 transition-colors">
-                                <p className="text-xs sm:text-sm text-slate-200 mb-1">{notification.message}</p>
+                                <p className="text-xs sm:text-sm text-slate-100 mb-1">{notification.message}</p> {/* Brighter text for notification message */}
                                 <div className="flex justify-between items-center">
                                 <p className="text-xs text-slate-500">{new Date(notification.timestamp).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                                <button onClick={() => markNotificationAsRead(notification.id)} className={`text-xs text-${THEME_COLORS.secondary} hover:text-${THEME_COLORS.secondaryHover}`}>
+                                <button onClick={() => markNotificationAsRead(notification.id)} className={`text-xs text-${THEME_COLORS.primary} hover:text-${THEME_COLORS.primaryHover}`}> {/* Changed to primary color */}
                                     {t('markAsRead')}
                                 </button>
                                 </div>
@@ -351,7 +351,7 @@ const Navbar: React.FC = () => {
                 {currentUser && (
                     <button
                         onClick={handleLogout}
-                        className={`p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-${THEME_COLORS.primary} transition-colors mx-1 xs:mx-2`}
+                        className={`p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-slate-100 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-${THEME_COLORS.surface} focus:ring-${THEME_COLORS.primary} transition-colors mx-1 xs:mx-2`}
                         aria-label={t('logout')}
                     >
                         {NavIcons.logout}
@@ -360,7 +360,7 @@ const Navbar: React.FC = () => {
                  <button
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     type="button"
-                    className={`inline-flex items-center justify-center p-1.5 sm:p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-${THEME_COLORS.primary}`}
+                    className={`inline-flex items-center justify-center p-1.5 sm:p-2 rounded-md text-slate-300 hover:text-slate-100 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-${THEME_COLORS.primary}`}
                     aria-controls="mobile-menu"
                     aria-expanded={mobileMenuOpen}
                 >

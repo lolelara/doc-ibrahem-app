@@ -17,18 +17,18 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b; /* slate-800 / surface */
+  background: #0f172a; /* slate-900 (new surface color) */
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #0284c7; /* sky-600 / primary */
+  background: #0ea5e9; /* sky-500 / new primary */
   border-radius: 10px;
-  border: 2px solid #1e293b; /* Creates a padding effect */
+  border: 2px solid #0f172a; /* slate-900 (new surface color, creates padding effect) */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0369a1; /* sky-700 / primaryHover */
+  background: #0284c7; /* sky-600 / new primaryHover */
 }
 
 /* Ensure focus styles are visible and consistent if not handled by Tailwind's focus:ring */

@@ -93,7 +93,7 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       {pageMessage && <div className={`p-3 sm:p-4 mb-4 text-xs sm:text-sm rounded-lg bg-opacity-20 ${pageMessage.includes('محظور') || pageMessage.includes('denied') ? `bg-red-500 text-red-300` : `bg-yellow-500 text-yellow-300`}`}>{pageMessage}</div>}
-      <h1 className="text-2xl sm:text-3xl font-bold text-white">{t('dashboard')}</h1>
+      <h1 className={`text-2xl sm:text-3xl font-bold text-${THEME_COLORS.textPrimary}`}>{t('dashboard')}</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
         <Card className="p-4 sm:p-6 lg:col-span-2">
@@ -103,21 +103,21 @@ const DashboardPage: React.FC = () => {
 
         <div className="space-y-4 sm:space-y-6 md:space-y-8 lg:col-span-1">
             <Card className="p-4 sm:p-6">
-                <h2 className="text-xl sm:text-2xl font-semibold text-sky-400 mb-3 sm:mb-4">{t('currentPlan')}</h2>
+                <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.primary} mb-3 sm:mb-4`}>{t('currentPlan')}</h2>
                 {currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE && currentPlanDetails && currentUser.subscriptionExpiry ? (
                 <div>
-                    <p className="text-md sm:text-lg"><strong className="font-semibold">{currentPlanDetails.name}</strong></p>
-                    <p className="text-slate-300 text-xs sm:text-sm">{currentPlanDetails.description}</p>
-                    <ul className="list-disc list-inside mt-2 text-slate-300 text-xs sm:text-sm space-y-0.5">
+                    <p className={`text-md sm:text-lg text-${THEME_COLORS.textPrimary}`}><strong className="font-semibold">{currentPlanDetails.name}</strong></p>
+                    <p className={`text-${THEME_COLORS.textSecondary} text-xs sm:text-sm`}>{currentPlanDetails.description}</p>
+                    <ul className={`list-disc list-inside mt-2 text-${THEME_COLORS.textSecondary} text-xs sm:text-sm space-y-0.5`}>
                         {currentPlanDetails.features.map(feature => <li key={feature.id}>{feature.text}</li>)}
                     </ul>
-                    <p className="text-slate-300 text-xs sm:text-sm mt-2">{t('expiresOn')}: {new Date(currentUser.subscriptionExpiry).toLocaleDateString('ar-EG')}</p>
+                    <p className={`text-${THEME_COLORS.textSecondary} text-xs sm:text-sm mt-2`}>{t('expiresOn')}: {new Date(currentUser.subscriptionExpiry).toLocaleDateString('ar-EG')}</p>
                 </div>
                 ) : currentUser.subscriptionStatus === SubscriptionStatus.PENDING ? (
                   <p className="text-yellow-400 text-sm sm:text-base">{t('pendingApproval')} {currentUser.activeSubscriptionPlanId && `- ${currentPlanDetails?.name || t('planLoading')}`}</p>
                 ) : (
                 <div className="text-center">
-                    <p className="text-slate-400 text-sm sm:text-base mb-3 sm:mb-4">{t('noActivePlan')}</p>
+                    <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base mb-3 sm:mb-4`}>{t('noActivePlan')}</p>
                     <Button onClick={() => navigate('/user/subscriptions')} variant="secondary" size="md">{t('browsePlans')}</Button>
                 </div>
                 )}
@@ -128,10 +128,10 @@ const DashboardPage: React.FC = () => {
                 {assignedPdfs.length > 0 ? (
                     <div className="space-y-2 sm:space-y-3 max-h-52 sm:max-h-60 overflow-y-auto">
                     {assignedPdfs.map(pdf => (
-                        <div key={pdf.id} className="p-2 sm:p-3 bg-slate-700 rounded-md flex flex-col xs:flex-row xs:justify-between xs:items-center gap-2 xs:gap-0">
+                        <div key={pdf.id} className="p-2 sm:p-3 bg-slate-800 rounded-md flex flex-col xs:flex-row xs:justify-between xs:items-center gap-2 xs:gap-0"> {/* Changed background to slate-800 */}
                         <div>
-                            <h4 className="font-semibold text-white text-sm sm:text-base break-all">{pdf.fileName}</h4>
-                            <p className="text-xs text-slate-400">{pdf.description}</p>
+                            <h4 className={`font-semibold text-${THEME_COLORS.textPrimary} text-sm sm:text-base break-all`}>{pdf.fileName}</h4>
+                            <p className={`text-xs text-${THEME_COLORS.textSecondary}`}>{pdf.description}</p>
                         </div>
                         <Button onClick={() => handleDownloadPdf(pdf)} size="sm" variant="ghost" className="!text-xs !px-2 !py-1 self-end xs:self-center">
                             {t('downloadPdf')}
@@ -143,7 +143,7 @@ const DashboardPage: React.FC = () => {
                     ))}
                     </div>
                 ) : (
-                    <p className="text-slate-400 text-sm sm:text-base">{t('noPdfsAssigned')}</p>
+                    <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base`}>{t('noPdfsAssigned')}</p>
                 )}
             </Card>
 
@@ -152,11 +152,11 @@ const DashboardPage: React.FC = () => {
                 {assignedResourceLinks.length > 0 ? (
                     <div className="space-y-2 sm:space-y-3 max-h-52 sm:max-h-60 overflow-y-auto">
                     {assignedResourceLinks.map(link => (
-                        <div key={link.id} className="p-2 sm:p-3 bg-slate-700 rounded-md">
+                        <div key={link.id} className="p-2 sm:p-3 bg-slate-800 rounded-md"> {/* Changed background to slate-800 */}
                             <div className="flex flex-col xs:flex-row xs:justify-between xs:items-start gap-2">
                                 <div>
-                                    <h4 className="font-semibold text-white text-sm sm:text-base break-all">{link.title}</h4>
-                                    <p className="text-xs text-slate-400 mb-1">{link.description}</p>
+                                    <h4 className={`font-semibold text-${THEME_COLORS.textPrimary} text-sm sm:text-base break-all`}>{link.title}</h4>
+                                    <p className={`text-xs text-${THEME_COLORS.textSecondary} mb-1`}>{link.description}</p>
                                     <span className={`px-1.5 py-0.5 text-xs bg-${THEME_COLORS.accent} bg-opacity-20 text-${THEME_COLORS.accent} rounded-full`}>
                                         {getResourceCategoryName(link.category)}
                                     </span>
@@ -178,7 +178,7 @@ const DashboardPage: React.FC = () => {
                     ))}
                     </div>
                 ) : (
-                    <p className="text-slate-400 text-sm sm:text-base">{t('noResourcesAssigned')}</p>
+                    <p className={`text-${THEME_COLORS.textSecondary} text-sm sm:text-base`}>{t('noResourcesAssigned')}</p>
                 )}
             </Card>
         </div>
@@ -245,7 +245,7 @@ const StatsTracker: React.FC = () => {
            <h3 className="text-md sm:text-lg font-semibold mt-3 sm:mt-4 mb-1 sm:mb-2">{t('progressNotes')}</h3>
           <div className="space-y-1.5 sm:space-y-2">
             {(stats.progressNotes || []).map((note, index) => (
-              <p key={index} className="text-xs sm:text-sm text-slate-300 bg-slate-700 p-1.5 sm:p-2 rounded">{note}</p>
+              <p key={index} className={`text-xs sm:text-sm text-${THEME_COLORS.textPrimary} bg-slate-800 p-1.5 sm:p-2 rounded`}>{note}</p> {/* Changed bg */}
             ))}
           </div>
           <div className="flex gap-1 sm:gap-2 mt-1.5 sm:mt-2">
@@ -259,19 +259,19 @@ const StatsTracker: React.FC = () => {
         </>
       ) : (
          <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 text-slate-200 text-sm sm:text-base">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 text-${THEME_COLORS.textPrimary} text-sm sm:text-base`}>
             <p><strong>{t('weightKg')}:</strong> {stats.weight || 'N/A'}</p>
             <p><strong>{t('heightCm')}:</strong> {stats.height || 'N/A'}</p>
             <p><strong>{t('bodyFatPercentage')}:</strong> {stats.bodyFatPercentage ? `${stats.bodyFatPercentage}%` : 'N/A'}</p>
           </div>
           <h3 className="text-md sm:text-lg font-semibold mt-3 sm:mt-4 mb-1 sm:mb-2">{t('progressNotes')}</h3>
           {stats.progressNotes && stats.progressNotes.length > 0 ? (
-            <div className="space-y-1.5 sm:space-y-2 max-h-32 sm:max-h-40 overflow-y-auto bg-slate-700 p-1.5 sm:p-2 rounded">
+            <div className="space-y-1.5 sm:space-y-2 max-h-32 sm:max-h-40 overflow-y-auto bg-slate-800 p-1.5 sm:p-2 rounded"> {/* Changed bg */}
               {stats.progressNotes.map((note, index) => (
-                <p key={index} className="text-xs sm:text-sm text-slate-300">{note}</p>
+                <p key={index} className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary}`}>{note}</p>
               ))}
             </div>
-          ) : <p className="text-xs sm:text-sm text-slate-400">{t('noNotesYet', 'لا توجد ملاحظات تقدم بعد.')}</p>}
+          ) : <p className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary}`}>{t('noNotesYet', 'لا توجد ملاحظات تقدم بعد.')}</p>}
           <Button onClick={() => setIsEditing(true)} className="mt-3 sm:mt-4" size="md">{t('editStats', 'تعديل الإحصائيات')}</Button>
         </>
       )}
@@ -344,7 +344,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-lg sm:max-w-xl md:max-w-2xl mx-auto">
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">{t('profile')}</h1>
+      <h1 className={`text-2xl sm:text-3xl font-bold text-${THEME_COLORS.textPrimary} mb-4 sm:mb-6`}>{t('profile')}</h1>
       <Card className="p-4 sm:p-6">
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <Input label={t('name')} id="name" type="text" value={name} onChange={e => setName(e.target.value)} required />
@@ -359,7 +359,7 @@ const ProfilePage: React.FC = () => {
                 value={country} 
                 onChange={e => setCountry(e.target.value)} 
                 required
-                className={`block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-${THEME_COLORS.textPrimary}`}
+                className={`block w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-${THEME_COLORS.textPrimary}`}
             >
                 {COUNTRIES_LIST.map(c => (
                     <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option>
@@ -432,22 +432,22 @@ const SubscriptionPlansPage: React.FC = () => {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white text-center">{t('subscriptions')}</h1>
+      <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold text-${THEME_COLORS.textPrimary} text-center`}>{t('subscriptions')}</h1>
       {pageMessage && <div className={`p-3 sm:p-4 mb-4 text-xs sm:text-sm rounded-lg bg-opacity-20 bg-red-500 text-red-300`}>{pageMessage}</div>}
       {error && <p className="text-xs sm:text-sm text-red-400 text-center bg-red-900 bg-opacity-30 p-2 sm:p-3 rounded-md">{error}</p>}
       {success && <p className="text-xs sm:text-sm text-green-400 text-center bg-green-900 bg-opacity-30 p-2 sm:p-3 rounded-md">{success}</p>}
       
-      {plans.length === 0 && !loadingPage && <p className="text-center text-slate-400 py-6 sm:py-8">{t('noPlansAvailable', 'لا توجد خطط اشتراك متاحة حاليًا.')}</p>}
+      {plans.length === 0 && !loadingPage && <p className={`text-center text-${THEME_COLORS.textSecondary} py-6 sm:py-8`}>{t('noPlansAvailable', 'لا توجد خطط اشتراك متاحة حاليًا.')}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {plans.map(plan => (
           <Card key={plan.id} className="p-4 sm:p-6 flex flex-col justify-between">
             <div>
               <h2 className={`text-xl sm:text-2xl font-semibold text-${THEME_COLORS.primary} mb-1 sm:mb-2`}>{plan.name}</h2>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold mb-1">{plan.price} <span className="text-xs sm:text-sm text-slate-400">{plan.currency}</span></p>
-              <p className="text-slate-300 mb-3 sm:mb-4 text-xs sm:text-sm">{plan.description}</p>
+              <p className={`text-xl sm:text-2xl md:text-3xl font-bold text-${THEME_COLORS.textPrimary} mb-1`}>{plan.price} <span className={`text-xs sm:text-sm text-${THEME_COLORS.textSecondary}`}>{plan.currency}</span></p>
+              <p className={`text-${THEME_COLORS.textSecondary} mb-3 sm:mb-4 text-xs sm:text-sm`}>{plan.description}</p>
               <ul className="space-y-1 mb-4 sm:mb-6">
                 {plan.features.map((feature) => (
-                  <li key={feature.id} className="flex items-center text-slate-200 text-xs sm:text-sm">
+                  <li key={feature.id} className={`flex items-center text-${THEME_COLORS.textPrimary} text-xs sm:text-sm`}> {/* Updated text color */}
                     <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 me-1.5 sm:me-2 rtl:ms-1.5 sm:rtl:ms-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
                     {feature.text}
                   </li>

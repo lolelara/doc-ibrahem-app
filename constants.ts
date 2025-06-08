@@ -5,16 +5,16 @@ export const APP_NAME = "My Fit Coach";
 export const ADMIN_EMAIL = "lolelarap@gmail.com"; // Hardcoded admin email updated
 
 export const THEME_COLORS = {
-  primary: 'sky-600', 
-  primaryHover: 'sky-700',
-  secondary: 'lime-500',
-  secondaryHover: 'lime-600',
+  primary: 'sky-500', 
+  primaryHover: 'sky-600',
+  secondary: 'slate-700', // Muted secondary button
+  secondaryHover: 'slate-600',
   accent: 'rose-500', 
   accentHover: 'rose-600',
-  background: 'slate-950', // Darker background
-  surface: 'slate-900',    // Darker cards/modals
-  textPrimary: 'slate-50', // Brighter white for primary text on very dark bg
-  textSecondary: 'slate-400', 
+  background: 'slate-950',   // Deeper dark background
+  surface: 'slate-900',      // Darker surface for cards/modals
+  textPrimary: 'slate-50',  // Very light primary text
+  textSecondary: 'slate-400',// Light secondary text
   error: 'red-500',
   success: 'green-500',
 };
@@ -291,6 +291,7 @@ export const AR_TRANSLATIONS: Translations = {
   afterPhoto: "الصورة بعد",
   titleOrCaption: "العنوان أو الوصف",
   publishPost: "نشر المنشور",
+  postPublishedSuccess: "تم نشر منشورك بنجاح!",
   likes: "إعجابات",
   comments: "تعليقات",
   addComment: "إضافة تعليق",
@@ -333,6 +334,15 @@ export const AR_TRANSLATIONS: Translations = {
   informationalArticle: "مقال معلوماتي",
   otherCategory: "أخرى",
   urlInvalid: "الرابط المدخل غير صالح. يجب أن يبدأ بـ http:// أو https://",
+  // New Admin Section Translations
+  hideMenu: "إخفاء القائمة",
+  invalidDuration: "المدة المدخلة غير صالحة.",
+  subscriptionApprovedSuccess: "تمت الموافقة على الاشتراك بنجاح.",
+  subscriptionRejectedSuccess: "تم رفض الاشتراك بنجاح.",
+  requestedOn: "تاريخ الطلب",
+  adminNotesOptional: "ملاحظات الإدارة (اختياري للرفض)",
+  postedOn: "نُشر في",
+
 };
 
 export const INITIAL_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
