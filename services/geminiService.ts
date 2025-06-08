@@ -1,49 +1,75 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { GEMINI_MODEL_NAME, GEMINI_NUTRITION_SYSTEM_INSTRUCTION } from '../constants';
-import { AIAssistantMessage } from "../types";
+import { CalorieFormData, ActivityLevel, CalorieGoal } from '../types';
+import { ARABIC_STRINGS } from '../constants';
 
-// IMPORTANT: API_KEY must be set in the environment variables.
-// The problem statement implies `process.env.API_KEY` is available.
-// For a typical React app (CRA/Vite), this would be `process.env.REACT_APP_API_KEY` or `import.meta.env.VITE_API_KEY`.
-// We will use `process.env.API_KEY` directly as per the problem instructions.
+// Ensure API_KEY is available via process.env.API_KEY
+// The environment variable should be set in the build/deployment environment.
+// For local development, you might use a .env file with a tool like dotenv,
+// but for this specific setup, we assume it's globally available as process.env.API_KEY.
 const API_KEY = process.env.API_KEY;
 
-if (!API_KEY) {
-  console.warn("Gemini API Key is not set. AI features will not work. Ensure API_KEY environment variable is configured.");
+let ai: GoogleGenAI | null = null;
+if (API_KEY) {
+  ai = new GoogleGenAI({ apiKey: API_KEY });
+} else {
+  console.error("Gemini API Key is not configured. Calorie calculator will not work.");
 }
 
-const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
-export const getNutritionAdvice = async (userQuery: string, history: AIAssistantMessage[]): Promise<string> => {
+const getActivityLevelArabic = (level: ActivityLevel): string => {
+  return ARABIC_STRINGS.activityLevels[level] || String(level);
+};
+
+const getGoalArabic = (goal: CalorieGoal): string => {
+  return ARABIC_STRINGS.calorieGoals[goal] || String(goal);
+};
+
+export const calculateCaloriesWithGemini = async (formData: CalorieFormData): Promise<string> => {
   if (!ai) {
-    return "عذرًا، خدمة مساعد الذكاء الاصطناعي غير متاحة حاليًا بسبب مشكلة في الإعدادات.";
+    return Promise.reject("Gemini API client not initialized. API Key might be missing.");
   }
 
-  const contents = history.map(msg => ({
-    role: msg.role === 'assistant' ? 'model' : msg.role,
-    parts: [{ text: msg.content }]
-  }));
-  contents.push({ role: 'user', parts: [{ text: userQuery }] });
+  const genderArabic = formData.gender === 'male' ? ARABIC_STRINGS.male : ARABIC_STRINGS.female;
+  const activityLevelArabic = getActivityLevelArabic(formData.activityLevel);
+  const goalArabic = getGoalArabic(formData.goal);
+
+  const prompt = `
+    أنت خبير تغذية. برجاء حساب السعرات الحرارية اليومية المطلوبة لشخص بناءً على البيانات التالية:
+    - العمر: ${formData.age} سنة
+    - الوزن: ${formData.weight} كجم
+    - الطول: ${formData.height} سم
+    - الجنس: ${genderArabic}
+    - مستوى النشاط: ${activityLevelArabic}
+    - الهدف: ${goalArabic}
+
+    قدم الناتج كرقم يمثل عدد السعرات الحرارية فقط، بدون أي نص إضافي. على سبيل المثال: 2500
+  `;
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: GEMINI_MODEL_NAME,
-      contents: contents,
-      config: {
-        systemInstruction: GEMINI_NUTRITION_SYSTEM_INSTRUCTION,
-        temperature: 0.7,
-        topP: 0.9,
-        topK: 40,
-      },
+      model: 'gemini-2.5-flash-preview-04-17', // Use the specified model
+      contents: prompt,
+      // config: { temperature: 0.2 } // Optional: Lower temperature for more deterministic output for a calculator
     });
-    return response.text;
+    
+    const textResponse = response.text.trim();
+    // Validate if the response is a number
+    if (/^\d+$/.test(textResponse)) {
+      return textResponse;
+    } else {
+      console.warn("Gemini response was not a plain number:", textResponse);
+      // Fallback or attempt to extract number if model adds minor text
+      const numberMatch = textResponse.match(/\d+/);
+      if (numberMatch && numberMatch[0]) {
+        return numberMatch[0];
+      }
+      return Promise.reject("لم يتمكن الذكاء الاصطناعي من حساب السعرات. حاول تعديل المدخلات.");
+    }
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    // Provide a more specific error message if possible
-    if (error instanceof Error && error.message.includes('API key not valid')) {
-        return "عذرًا، حدث خطأ في الاتصال بمساعد الذكاء الاصطناعي. قد يكون مفتاح API غير صالح.";
-    }
-    return "عذرًا، حدث خطأ أثناء محاولة الحصول على نصيحة غذائية. يرجى المحاولة مرة أخرى لاحقًا.";
+    // Check for specific GoogleGenAIError if needed for more granular error handling
+    // if (error instanceof GoogleGenAIError) { ... }
+    return Promise.reject("حدث خطأ أثناء الاتصال بخدمة الذكاء الاصطناعي لحساب السعرات.");
   }
 };
