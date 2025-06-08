@@ -1,440 +1,210 @@
 
-import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, PdfDocument, SubscriptionPlanFeature, Notification, TransformationPost, TransformationComment } from '../types';
-import { ADMIN_EMAIL, INITIAL_WORKOUT_VIDEOS, INITIAL_RECIPES, INITIAL_SUBSCRIPTION_PLANS, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST, TRANSFORMATION_IMAGE_MAX_SIZE_BYTES } from '../constants';
+import { User, UserRole, WorkoutVideo, Recipe, SubscriptionRequest, SubscriptionStatus, UserStats, SubscriptionPlan, PdfDocument, Notification, TransformationPost, TransformationComment, ExternalResourceLink, ExternalResourceCategory } from '../types';
+import { ADMIN_EMAIL, PDF_MAX_SIZE_BYTES, COUNTRIES_LIST, TRANSFORMATION_IMAGE_MAX_SIZE_BYTES } from '../constants';
 
-const LS_USERS = 'fitzone_users';
-const LS_WORKOUT_VIDEOS = 'fitzone_workout_videos';
-const LS_RECIPES = 'fitzone_recipes';
-const LS_SUBSCRIPTION_REQUESTS = 'fitzone_subscription_requests';
-const LS_SUBSCRIPTION_PLANS = 'fitzone_subscription_plans';
-const LS_PDF_DOCUMENTS = 'fitzone_pdf_documents';
-const LS_GLOBAL_NOTIFICATIONS = 'fitzone_global_notifications';
-const LS_TRANSFORMATION_POSTS = 'fitzone_transformation_posts';
-const LS_TRANSFORMATION_COMMENTS = 'fitzone_transformation_comments';
+// NOTE: All functions now simulate async API calls.
+// A proper backend API interacting with the Netlify database is required.
 
+// Helper function to simulate API delay and return a Promise
+const simulateApiCall = <T>(data: T, delay = 100): Promise<T> => 
+  new Promise(resolve => setTimeout(() => resolve(data), delay));
 
-const getFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
-  } catch (error) {
-    console.error(`Error reading from localStorage key "${key}":`, error);
-    return defaultValue;
-  }
+// Helper for error simulation or handling
+const handleApiError = (error: any, defaultMessage: string = 'An API error occurred') => {
+  console.error("API Error:", error);
+  // In a real app, you might throw a new error or return a specific error structure
+  throw new Error(error.message || defaultMessage);
 };
 
-const saveToLocalStorage = <T,>(key: string, value: T): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Error writing to localStorage key "${key}":`, error);
-     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        alert("LocalStorage is full. Cannot save more data. Please clear some space or contact support.");
-     }
-  }
-};
-
-// Initialize with default admin and data if not present
-const initializeData = () => {
-  let users = getFromLocalStorage<User[]>(LS_USERS, []);
-  const targetAdminEmail = ADMIN_EMAIL; 
-
-  let foundTargetAdmin = false;
-  users = users.map(user => {
-    const userWithPhoneAndCountry = { 
-        ...user, 
-        phoneNumber: user.phoneNumber || '',
-        country: user.country || COUNTRIES_LIST[0]?.code || '' // Default to first country or empty string
-    };
-    if (user.email === targetAdminEmail) {
-      foundTargetAdmin = true;
-      return {
-        ...userWithPhoneAndCountry,
-        role: UserRole.SITE_MANAGER, // Site Manager
-        name: user.name || 'Site Manager', 
-        password: user.password || 'adminpassword', 
-      };
-    }
-    // Demote any other user who might have been SITE_MANAGER or ADMIN (if not ADMIN_EMAIL)
-    if (user.role === UserRole.SITE_MANAGER || (user.role === UserRole.ADMIN && user.email !== targetAdminEmail)) {
-      return { ...userWithPhoneAndCountry, role: UserRole.USER };
-    }
-    return userWithPhoneAndCountry;
-  });
-
-  if (!foundTargetAdmin) {
-    const newAdmin: User = {
-      id: `sitemanager_user_${Date.now()}`,
-      email: targetAdminEmail,
-      password: 'adminpassword', 
-      name: 'Site Manager',
-      phoneNumber: '', 
-      country: COUNTRIES_LIST[0]?.code || '',
-      role: UserRole.SITE_MANAGER,
-    };
-    users.push(newAdmin);
-  }
-  saveToLocalStorage(LS_USERS, users);
-
-  if (getFromLocalStorage<WorkoutVideo[]>(LS_WORKOUT_VIDEOS, []).length === 0) {
-    saveToLocalStorage(LS_WORKOUT_VIDEOS, INITIAL_WORKOUT_VIDEOS);
-  }
-  if (getFromLocalStorage<Recipe[]>(LS_RECIPES, []).length === 0) {
-    saveToLocalStorage(LS_RECIPES, INITIAL_RECIPES);
-  }
-  if (getFromLocalStorage<SubscriptionRequest[]>(LS_SUBSCRIPTION_REQUESTS, []).length === 0) {
-    saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, []);
-  }
-  if (getFromLocalStorage<SubscriptionPlan[]>(LS_SUBSCRIPTION_PLANS, []).length === 0) {
-    saveToLocalStorage(LS_SUBSCRIPTION_PLANS, INITIAL_SUBSCRIPTION_PLANS);
-  }
-  if (getFromLocalStorage<PdfDocument[]>(LS_PDF_DOCUMENTS, []).length === 0) {
-    saveToLocalStorage(LS_PDF_DOCUMENTS, []);
-  }
-  if (getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []).length === 0) {
-    saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, []);
-  }
-  // Initialize new transformation data stores
-  if (getFromLocalStorage<TransformationPost[]>(LS_TRANSFORMATION_POSTS, []).length === 0) {
-    saveToLocalStorage(LS_TRANSFORMATION_POSTS, []);
-  }
-  if (getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []).length === 0) {
-    saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, []);
-  }
-};
-
-
-initializeData();
 
 // User Management
-export const getUsers = (): User[] => getFromLocalStorage<User[]>(LS_USERS, []);
-export const getUserByEmail = (email: string): User | undefined => getUsers().find(u => u.email === email);
-export const getUserById = (id: string): User | undefined => getUsers().find(u => u.id === id);
+export const getUsers = async (): Promise<User[]> => {
+  // TODO: API call to GET /api/users
+  console.warn("getUsers: API call not implemented. Returning empty array.");
+  return simulateApiCall([]);
+};
 
-export const addUser = (user: Omit<User, 'id' | 'role'> & { role?: UserRole }): User => {
-  const users = getUsers();
+export const getUserByEmail = async (email: string): Promise<User | undefined> => {
+  // TODO: API call to GET /api/users?email=${email}
+  console.warn(`getUserByEmail: API call not implemented for ${email}.`);
+  // This is a placeholder. In a real scenario, the backend handles admin creation.
+  if (email === ADMIN_EMAIL) {
+    return simulateApiCall({
+      id: `sitemanager_user_placeholder`,
+      email: ADMIN_EMAIL,
+      password: 'adminpassword', // Password check would be backend-side
+      name: 'Site Manager (Placeholder)',
+      phoneNumber: '',
+      country: COUNTRIES_LIST[0]?.code || '',
+      role: UserRole.SITE_MANAGER,
+    } as User);
+  }
+  return simulateApiCall(undefined);
+};
+
+export const getUserById = async (id: string): Promise<User | undefined> => {
+  // TODO: API call to GET /api/users/${id}
+  console.warn(`getUserById: API call not implemented for ${id}.`);
+  return simulateApiCall(undefined);
+};
+
+export const addUser = async (user: Omit<User, 'id' | 'role'> & { role?: UserRole }): Promise<User> => {
   let role = UserRole.USER;
   if (user.email === ADMIN_EMAIL) {
     role = UserRole.SITE_MANAGER;
-  } else if (user.role) { // Allow role to be passed for testing, but override for ADMIN_EMAIL
+  } else if (user.role) {
     role = user.role;
   }
 
-  if (!user.phoneNumber) { // Phone number is now mandatory
-    throw new Error("Phone number is required.");
-  }
-   if (!user.country) { // Country is now mandatory
-    throw new Error("Country is required.");
-  }
+  if (!user.phoneNumber) throw new Error("Phone number is required.");
+  if (!user.country) throw new Error("Country is required.");
 
-  const newUser: User = {
+  const newUserPayload: Omit<User, 'id'> = {
     ...user,
-    id: `user_${Date.now()}`,
     role: role,
-    phoneNumber: user.phoneNumber, 
-    country: user.country,
   };
-  
-  if (user.email === ADMIN_EMAIL && newUser.role !== UserRole.SITE_MANAGER) {
-      throw new Error("Cannot create non-SiteManager user with the designated Site Manager email.");
-  }
-    
-  users.push(newUser);
-  saveToLocalStorage(LS_USERS, users);
-  return newUser;
+  // TODO: API call to POST /api/users with newUserPayload
+  console.warn("addUser: API call not implemented. Simulating user creation.");
+  const createdUser: User = { ...newUserPayload, id: `user_${Date.now()}` };
+  return simulateApiCall(createdUser);
 };
 
-export const updateUser = (updatedUserPartial: Partial<User> & { id: string }, currentUserId?: string): User | undefined => {
-  let users = getUsers();
-  const index = users.findIndex(u => u.id === updatedUserPartial.id);
-  if (index === -1) return undefined;
+export const updateUser = async (updatedUserPartial: Partial<User> & { id: string }, currentUserId?: string): Promise<User | undefined> => {
+  // TODO: API call to PUT /api/users/${updatedUserPartial.id} with updatedUserPartial
+  // Backend should handle role change logic, email uniqueness, etc.
+  console.warn(`updateUser: API call not implemented for user ${updatedUserPartial.id}. Simulating update.`);
+  if (!updatedUserPartial.id) return undefined;
 
-  const originalUser = users[index];
-  const currentUserPerformingAction = currentUserId ? getUserById(currentUserId) : null;
+  // Placeholder: In a real app, this logic is more complex and mostly backend-driven.
+  // We simulate fetching the user, then applying changes.
+  // const existingUser = await getUserById(updatedUserPartial.id);
+  // if (!existingUser) return undefined;
+  // const updatedUser = { ...existingUser, ...updatedUserPartial };
 
-  let finalUpdatedUser: User = { ...originalUser, ...updatedUserPartial };
-
-  // Role change logic - only Site Manager can change roles
-  if (updatedUserPartial.role && originalUser.role !== updatedUserPartial.role) {
-    if (!currentUserPerformingAction || currentUserPerformingAction.role !== UserRole.SITE_MANAGER) {
-      throw new Error("Only the Site Manager can change user roles.");
-    }
-    if (originalUser.email === ADMIN_EMAIL && updatedUserPartial.role !== UserRole.SITE_MANAGER) {
-      // Prevent demoting the site manager account itself
-      throw new Error("The Site Manager role cannot be changed or demoted by anyone, including themselves.");
-    }
-    if (updatedUserPartial.role === UserRole.SITE_MANAGER && originalUser.email !== ADMIN_EMAIL) {
-      throw new Error("Only the designated email can be Site Manager.");
-    }
-    // Site Manager can promote USER to ADMIN or demote ADMIN to USER.
-    // An ADMIN cannot be promoted to SITE_MANAGER this way.
-    if (updatedUserPartial.role === UserRole.SITE_MANAGER && originalUser.role !== UserRole.SITE_MANAGER) {
-        finalUpdatedUser.role = UserRole.ADMIN; // Correct accidental promotion attempt
-    } else {
-        finalUpdatedUser.role = updatedUserPartial.role;
-    }
-  } else {
-    // Ensure role is not accidentally changed if not part of updatedUserPartial
-    finalUpdatedUser.role = originalUser.role; 
-  }
-
-  // Site Manager editing other user's sensitive info (email, password)
-  if (currentUserPerformingAction && currentUserPerformingAction.role === UserRole.SITE_MANAGER && originalUser.id !== currentUserPerformingAction.id) {
-    // Email change
-    if (updatedUserPartial.email && updatedUserPartial.email !== originalUser.email) {
-      if (updatedUserPartial.email === ADMIN_EMAIL) {
-        throw new Error("Cannot change another user's email to the Site Manager's email.");
-      }
-      const emailExists = users.some(u => u.email === updatedUserPartial.email && u.id !== originalUser.id);
-      if (emailExists) {
-        throw new Error("This email address is already in use by another user.");
-      }
-      finalUpdatedUser.email = updatedUserPartial.email;
-    }
-
-    // Password change by Site Manager for another user
-    if (updatedUserPartial.password) { // password field in partial means intent to change
-      finalUpdatedUser.password = updatedUserPartial.password;
-    }
-  } else if (originalUser.id === updatedUserPartial.id) { // User editing their own profile
-      if (updatedUserPartial.email && updatedUserPartial.email !== originalUser.email && originalUser.email === ADMIN_EMAIL) {
-         throw new Error("Site Manager cannot change their primary email address through profile edit.");
-      }
-       // If user is updating their own profile and they are the ADMIN_EMAIL, ensure their role remains SITE_MANAGER.
-      if (originalUser.email === ADMIN_EMAIL) {
-        finalUpdatedUser.role = UserRole.SITE_MANAGER;
-      }
-      // For self-update, password change should be handled via a separate "Change Password" form, not here directly.
-      // If password property is present in updatedUserPartial for self-update, it's likely from the registration flow.
-      // We preserve the original password if not explicitly changing via Site Manager action for another user.
-      if (!updatedUserPartial.password && originalUser.password) {
-        finalUpdatedUser.password = originalUser.password;
-      }
-  }
+  // For simulation, we'll just return the partial merged with an ID.
+  // The actual merging and validation (like role changes) happens server-side.
+  const simulatedUpdatedUser = { ...updatedUserPartial, name: updatedUserPartial.name || "Updated User" } as User;
 
 
-  users[index] = finalUpdatedUser;
-  saveToLocalStorage(LS_USERS, users);
-  return users[index];
+  return simulateApiCall(simulatedUpdatedUser);
 };
 
-
-export const deleteUser = (userIdToDelete: string, siteManagerId: string): boolean => {
-  let users = getUsers();
-  const siteManager = getUserById(siteManagerId);
-
-  if (!siteManager || siteManager.role !== UserRole.SITE_MANAGER) {
-    throw new Error("Only the Site Manager can delete users.");
-  }
-
-  if (userIdToDelete === siteManagerId) {
-    throw new Error("Site Manager cannot delete their own account.");
-  }
-
-  const userIndex = users.findIndex(u => u.id === userIdToDelete);
-  if (userIndex === -1) {
-    return false; // User not found
-  }
-
-  users.splice(userIndex, 1);
-  saveToLocalStorage(LS_USERS, users);
-
-  // Clean up related data
-  // 1. Subscription Requests
-  let subRequests = getSubscriptionRequests();
-  subRequests = subRequests.filter(req => req.userId !== userIdToDelete);
-  saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, subRequests);
-
-  // 2. PDF Assignments
-  let pdfs = getPdfDocuments();
-  pdfs.forEach(pdf => {
-    const assignmentIndex = pdf.assignedUserIds.indexOf(userIdToDelete);
-    if (assignmentIndex > -1) {
-      pdf.assignedUserIds.splice(assignmentIndex, 1);
-    }
-  });
-  saveToLocalStorage(LS_PDF_DOCUMENTS, pdfs);
-  
-  // 3. Global Notifications (remove user from readByUserIds)
-  let globalNotifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
-  globalNotifications.forEach(notification => {
-    const readIndex = notification.readByUserIds.indexOf(userIdToDelete);
-    if (readIndex > -1) {
-      notification.readByUserIds.splice(readIndex, 1);
-    }
-  });
-  saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, globalNotifications);
-
-  // 4. Transformation Posts and Comments
-  let transformationPosts = getTransformationPosts();
-  const userPosts = transformationPosts.filter(post => post.userId === userIdToDelete);
-  userPosts.forEach(post => deleteTransformationPostInternal(post.id)); // This will also delete comments for these posts
-  
-  // Remove comments made by the deleted user on other posts
-  let allComments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
-  const commentsByDeletedUser = allComments.filter(comment => comment.userId === userIdToDelete);
-  
-  commentsByDeletedUser.forEach(comment => {
-    deleteTransformationCommentInternal(comment.id, true); // true to skip admin check if needed here, or pass adminId
-  });
-
-
-  return true;
+export const deleteUser = async (userIdToDelete: string, siteManagerId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/users/${userIdToDelete}
+  // Backend must verify siteManagerId has permission.
+  console.warn(`deleteUser: API call not implemented for user ${userIdToDelete}.`);
+  // TODO: Backend should also handle cascading deletes of related data (subscriptions, PDF assignments, etc.)
+  return simulateApiCall(true);
 };
 
-
-export const updateUserStats = (userId: string, stats: UserStats): User | undefined => {
-  const user = getUserById(userId);
+export const updateUserStats = async (userId: string, stats: UserStats): Promise<User | undefined> => {
+  // TODO: API call to PUT /api/users/${userId}/stats with stats
+  console.warn(`updateUserStats: API call not implemented for user ${userId}.`);
+  const user = await getUserById(userId);
   if (user) {
     const updatedUser = { ...user, stats: { ...(user.stats || {}), ...stats } };
-    // Pass undefined for currentUserId as this is self-update, not role change
-    return updateUser(updatedUser, undefined); 
+    return simulateApiCall(updatedUser);
   }
-  return undefined;
+  return simulateApiCall(undefined);
 };
-
 
 // Workout Videos
-export const getWorkoutVideos = (): WorkoutVideo[] => getFromLocalStorage<WorkoutVideo[]>(LS_WORKOUT_VIDEOS, []);
-export const addWorkoutVideo = (video: Omit<WorkoutVideo, 'id' | 'uploadDate' | 'uploadedBy'>, adminId: string): WorkoutVideo => {
-  const videos = getWorkoutVideos();
-  const newVideo: WorkoutVideo = { 
-    ...video, 
-    id: `vid_${Date.now()}`, 
-    uploadDate: new Date().toISOString(),
-    uploadedBy: adminId 
-  };
-  videos.push(newVideo);
-  saveToLocalStorage(LS_WORKOUT_VIDEOS, videos);
-  return newVideo;
+export const getWorkoutVideos = async (): Promise<WorkoutVideo[]> => {
+  // TODO: API call to GET /api/workout-videos
+  console.warn("getWorkoutVideos: API call not implemented. Returning empty array.");
+  return simulateApiCall([]);
 };
-export const updateWorkoutVideo = (updatedVideo: WorkoutVideo): WorkoutVideo | undefined => {
-  let videos = getWorkoutVideos();
-  const index = videos.findIndex(v => v.id === updatedVideo.id);
-  if (index !== -1) {
-    videos[index] = updatedVideo;
-    saveToLocalStorage(LS_WORKOUT_VIDEOS, videos);
-    return videos[index];
-  }
-  return undefined;
+
+export const addWorkoutVideo = async (video: Omit<WorkoutVideo, 'id' | 'uploadDate' | 'uploadedBy'>, adminId: string): Promise<WorkoutVideo> => {
+  const newVideoPayload = { ...video, uploadedBy: adminId, uploadDate: new Date().toISOString() };
+  // TODO: API call to POST /api/workout-videos with newVideoPayload
+  console.warn("addWorkoutVideo: API call not implemented. Simulating video creation.");
+  const createdVideo: WorkoutVideo = { ...newVideoPayload, id: `vid_${Date.now()}` };
+  return simulateApiCall(createdVideo);
 };
-export const deleteWorkoutVideo = (videoId: string): boolean => {
-  let videos = getWorkoutVideos();
-  const initialLength = videos.length;
-  videos = videos.filter(v => v.id !== videoId);
-  if (videos.length < initialLength) {
-    saveToLocalStorage(LS_WORKOUT_VIDEOS, videos);
-    return true;
-  }
-  return false;
+
+export const updateWorkoutVideo = async (updatedVideo: WorkoutVideo): Promise<WorkoutVideo | undefined> => {
+  // TODO: API call to PUT /api/workout-videos/${updatedVideo.id} with updatedVideo
+  console.warn(`updateWorkoutVideo: API call not implemented for video ${updatedVideo.id}.`);
+  return simulateApiCall(updatedVideo);
+};
+
+export const deleteWorkoutVideo = async (videoId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/workout-videos/${videoId}
+  console.warn(`deleteWorkoutVideo: API call not implemented for video ${videoId}.`);
+  return simulateApiCall(true);
 };
 
 // Recipes
-export const getRecipes = (): Recipe[] => getFromLocalStorage<Recipe[]>(LS_RECIPES, []);
-export const addRecipe = (recipe: Omit<Recipe, 'id' | 'uploadDate' | 'uploadedBy'>, adminId: string): Recipe => {
-  const recipes = getRecipes();
-  const newRecipe: Recipe = { 
-    ...recipe, 
-    id: `rec_${Date.now()}`, 
-    uploadDate: new Date().toISOString(),
-    uploadedBy: adminId 
-  };
-  recipes.push(newRecipe);
-  saveToLocalStorage(LS_RECIPES, recipes);
-  return newRecipe;
+export const getRecipes = async (): Promise<Recipe[]> => {
+  // TODO: API call to GET /api/recipes
+  console.warn("getRecipes: API call not implemented. Returning empty array.");
+  return simulateApiCall([]);
 };
-export const updateRecipe = (updatedRecipe: Recipe): Recipe | undefined => {
-  let recipes = getRecipes();
-  const index = recipes.findIndex(r => r.id === updatedRecipe.id);
-  if (index !== -1) {
-    recipes[index] = updatedRecipe;
-    saveToLocalStorage(LS_RECIPES, recipes);
-    return recipes[index];
-  }
-  return undefined;
+
+export const addRecipe = async (recipe: Omit<Recipe, 'id' | 'uploadDate' | 'uploadedBy'>, adminId: string): Promise<Recipe> => {
+  const newRecipePayload = { ...recipe, uploadedBy: adminId, uploadDate: new Date().toISOString() };
+  // TODO: API call to POST /api/recipes with newRecipePayload
+  console.warn("addRecipe: API call not implemented. Simulating recipe creation.");
+  const createdRecipe: Recipe = { ...newRecipePayload, id: `rec_${Date.now()}` };
+  return simulateApiCall(createdRecipe);
 };
-export const deleteRecipe = (recipeId: string): boolean => {
-  let recipes = getRecipes();
-  const initialLength = recipes.length;
-  recipes = recipes.filter(r => r.id !== recipeId);
-  if (recipes.length < initialLength) {
-    saveToLocalStorage(LS_RECIPES, recipes);
-    return true;
-  }
-  return false;
+
+export const updateRecipe = async (updatedRecipe: Recipe): Promise<Recipe | undefined> => {
+  // TODO: API call to PUT /api/recipes/${updatedRecipe.id} with updatedRecipe
+  console.warn(`updateRecipe: API call not implemented for recipe ${updatedRecipe.id}.`);
+  return simulateApiCall(updatedRecipe);
+};
+
+export const deleteRecipe = async (recipeId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/recipes/${recipeId}
+  console.warn(`deleteRecipe: API call not implemented for recipe ${recipeId}.`);
+  return simulateApiCall(true);
 };
 
 // Subscription Plans
-export const getSubscriptionPlans = (): SubscriptionPlan[] => getFromLocalStorage<SubscriptionPlan[]>(LS_SUBSCRIPTION_PLANS, INITIAL_SUBSCRIPTION_PLANS);
-export const addSubscriptionPlan = (plan: Omit<SubscriptionPlan, 'id'>): SubscriptionPlan => {
-  const plans = getSubscriptionPlans();
-  const newPlan: SubscriptionPlan = {
-    ...plan,
-    id: `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    features: plan.features.map((f, idx) => ({ ...f, id: `feat_${Date.now()}_${idx}`}))
-  };
-  plans.push(newPlan);
-  saveToLocalStorage(LS_SUBSCRIPTION_PLANS, plans);
-  return newPlan;
+export const getSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
+  // TODO: API call to GET /api/subscription-plans
+  console.warn("getSubscriptionPlans: API call not implemented. Returning empty array.");
+  // Simulating initial plans for UI to work to some extent
+  const { INITIAL_SUBSCRIPTION_PLANS } = await import('../constants');
+  return simulateApiCall(INITIAL_SUBSCRIPTION_PLANS);
 };
-export const updateSubscriptionPlan = (updatedPlan: SubscriptionPlan): SubscriptionPlan | undefined => {
-  let plans = getSubscriptionPlans();
-  const index = plans.findIndex(p => p.id === updatedPlan.id);
-  if (index !== -1) {
-    updatedPlan.features = updatedPlan.features.map((f, idx) => ({
-        id: f.id || `feat_${updatedPlan.id}_${idx}_${Date.now()}`, 
-        text: f.text
-    }));
-    plans[index] = updatedPlan;
-    saveToLocalStorage(LS_SUBSCRIPTION_PLANS, plans);
-    return plans[index];
-  }
-  return undefined;
+
+export const addSubscriptionPlan = async (plan: Omit<SubscriptionPlan, 'id'>): Promise<SubscriptionPlan> => {
+  const newPlanPayload = { ...plan, features: plan.features.map((f, idx) => ({ ...f, id: `feat_${Date.now()}_${idx}`})) };
+  // TODO: API call to POST /api/subscription-plans with newPlanPayload
+  console.warn("addSubscriptionPlan: API call not implemented. Simulating plan creation.");
+  const createdPlan: SubscriptionPlan = { ...newPlanPayload, id: `plan_${Date.now()}` };
+  return simulateApiCall(createdPlan);
 };
-export const deleteSubscriptionPlan = (planId: string): boolean => {
-  let plans = getSubscriptionPlans();
-  const initialLength = plans.length;
-  plans = plans.filter(p => p.id !== planId);
-  if (plans.length < initialLength) {
-    saveToLocalStorage(LS_SUBSCRIPTION_PLANS, plans);
-    let users = getUsers();
-    users.forEach(user => {
-        if (user.activeSubscriptionPlanId === planId) {
-            updateUser({ ...user, activeSubscriptionPlanId: undefined, subscriptionStatus: SubscriptionStatus.CANCELLED, subscriptionExpiry: undefined, subscriptionId: undefined, subscriptionNotes: "The subscription plan was deleted by admin." });
-        }
-    });
-    saveToLocalStorage(LS_USERS, users);
-    
-    let requests = getSubscriptionRequests();
-    requests.forEach(req => {
-        if (req.planId === planId && req.status === SubscriptionStatus.PENDING) {
-            req.status = SubscriptionStatus.REJECTED;
-            req.adminNotes = "The requested plan was deleted by admin.";
-            req.processedDate = new Date().toISOString();
-        }
-    });
-    saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests);
-    return true;
-  }
-  return false;
+
+export const updateSubscriptionPlan = async (updatedPlan: SubscriptionPlan): Promise<SubscriptionPlan | undefined> => {
+  // TODO: API call to PUT /api/subscription-plans/${updatedPlan.id} with updatedPlan
+  console.warn(`updateSubscriptionPlan: API call not implemented for plan ${updatedPlan.id}.`);
+  return simulateApiCall(updatedPlan);
+};
+
+export const deleteSubscriptionPlan = async (planId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/subscription-plans/${planId}
+  // Backend should handle logic for existing subscribers (e.g., mark their plans as 'cancelled by admin').
+  console.warn(`deleteSubscriptionPlan: API call not implemented for plan ${planId}.`);
+  return simulateApiCall(true);
 };
 
 // Subscription Requests
-export const getSubscriptionRequests = (): SubscriptionRequest[] => getFromLocalStorage<SubscriptionRequest[]>(LS_SUBSCRIPTION_REQUESTS, []);
-export const requestSubscription = (userId: string, userEmail: string, planId: string): SubscriptionRequest => {
-  const requests = getSubscriptionRequests();
-  const existingPendingRequest = requests.find(r => r.userId === userId && r.status === SubscriptionStatus.PENDING);
-  if (existingPendingRequest) {
-    throw new Error("لديك بالفعل طلب اشتراك معلق.");
-  }
-  
-  const plan = getSubscriptionPlans().find(p => p.id === planId);
-  if (!plan) {
-    throw new Error("خطة الاشتراك المحددة غير متوفرة.");
-  }
+export const getSubscriptionRequests = async (): Promise<SubscriptionRequest[]> => {
+  // TODO: API call to GET /api/subscription-requests
+  console.warn("getSubscriptionRequests: API call not implemented. Returning empty array.");
+  return simulateApiCall([]);
+};
 
-  const newRequest: SubscriptionRequest = {
-    id: `subreq_${Date.now()}`,
+export const requestSubscription = async (userId: string, userEmail: string, planId: string): Promise<SubscriptionRequest> => {
+  const plans = await getSubscriptionPlans();
+  const plan = plans.find(p => p.id === planId);
+  if (!plan) throw new Error("Selected subscription plan is not available.");
+
+  const newRequestPayload = {
     userId,
     userEmail,
     planId,
@@ -442,97 +212,120 @@ export const requestSubscription = (userId: string, userEmail: string, planId: s
     requestDate: new Date().toISOString(),
     status: SubscriptionStatus.PENDING,
   };
-  requests.push(newRequest);
-  saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests);
-
-  const user = getUserById(userId);
+  // TODO: API call to POST /api/subscription-requests with newRequestPayload
+  // TODO: Backend might also update user's status to PENDING
+  console.warn("requestSubscription: API call not implemented. Simulating request.");
+  const createdRequest: SubscriptionRequest = { ...newRequestPayload, id: `subreq_${Date.now()}` };
+  
+  // Simulate user update locally for now
+  const user = await getUserById(userId);
   if (user) {
-    updateUser({ ...user, subscriptionStatus: SubscriptionStatus.PENDING, activeSubscriptionPlanId: planId, subscriptionNotes: 'Subscription requested, pending approval.' });
+    await updateUser({ ...user, subscriptionStatus: SubscriptionStatus.PENDING, activeSubscriptionPlanId: planId, subscriptionNotes: 'Subscription requested, pending approval.' });
   }
-  return newRequest;
+  return simulateApiCall(createdRequest);
 };
-export const approveSubscription = (requestId: string, adminId: string, durationDays: number): SubscriptionRequest | undefined => {
-  const requests = getSubscriptionRequests();
-  const requestIndex = requests.findIndex(r => r.id === requestId);
 
-  if (requestIndex !== -1) {
-    const request = requests[requestIndex];
-    const user = getUserById(request.userId);
+export const approveSubscription = async (requestId: string, adminId: string, durationDays: number): Promise<SubscriptionRequest | undefined> => {
+  // TODO: API call to POST /api/subscription-requests/${requestId}/approve with { adminId, durationDays }
+  // Backend updates request status and user's subscription details (expiryDate, status: ACTIVE).
+  console.warn(`approveSubscription: API call not implemented for request ${requestId}.`);
+  
+  // Simulating the update
+  const requests = await getSubscriptionRequests(); // This would be a single request fetch in reality
+  const request = requests.find(r => r.id === requestId);
+  if (!request) return undefined;
 
-    if (user) {
-      const now = new Date();
-      const expiryDate = new Date(new Date().setDate(now.getDate() + durationDays)).toISOString();
-      
-      request.status = SubscriptionStatus.ACTIVE;
-      request.processedBy = adminId;
-      request.processedDate = new Date().toISOString();
-      request.expiryDate = expiryDate;
-      
-      saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests);
-      
-      updateUser({ 
-        id: user.id, // ensure id is passed for updateUser
-        subscriptionId: request.id, 
-        activeSubscriptionPlanId: request.planId,
-        subscriptionExpiry: expiryDate, 
-        subscriptionStatus: SubscriptionStatus.ACTIVE,
-        subscriptionNotes: `Subscription approved by ${adminId}. Expires on ${expiryDate}.`
-      }, adminId); // Pass adminId as currentUserId for context if needed
-      return request;
-    }
-  }
-  return undefined;
+  const user = await getUserById(request.userId);
+  if (!user) return undefined;
+
+  const now = new Date();
+  const expiryDate = new Date(new Date().setDate(now.getDate() + durationDays)).toISOString();
+  
+  const updatedRequest = {
+    ...request,
+    status: SubscriptionStatus.ACTIVE,
+    processedBy: adminId,
+    processedDate: new Date().toISOString(),
+    expiryDate: expiryDate,
+  };
+  await updateUser({ 
+    id: user.id,
+    subscriptionId: request.id, 
+    activeSubscriptionPlanId: request.planId,
+    subscriptionExpiry: expiryDate, 
+    subscriptionStatus: SubscriptionStatus.ACTIVE,
+    subscriptionNotes: `Subscription approved by ${adminId}. Expires on ${expiryDate}.`
+  }, adminId);
+
+  return simulateApiCall(updatedRequest);
 };
-export const rejectSubscription = (requestId: string, adminId: string, adminNotes?: string): SubscriptionRequest | undefined => {
-  const requests = getSubscriptionRequests();
-  const requestIndex = requests.findIndex(r => r.id === requestId);
 
-  if (requestIndex !== -1) {
-    requests[requestIndex].status = SubscriptionStatus.REJECTED;
-    requests[requestIndex].adminNotes = adminNotes;
-    requests[requestIndex].processedBy = adminId; 
-    requests[requestIndex].processedDate = new Date().toISOString();
-    saveToLocalStorage(LS_SUBSCRIPTION_REQUESTS, requests);
+export const rejectSubscription = async (requestId: string, adminId: string, adminNotes?: string): Promise<SubscriptionRequest | undefined> => {
+  // TODO: API call to POST /api/subscription-requests/${requestId}/reject with { adminId, adminNotes }
+  // Backend updates request status and user's subscription details.
+  console.warn(`rejectSubscription: API call not implemented for request ${requestId}.`);
 
-    const user = getUserById(requests[requestIndex].userId);
-    if (user) { 
-        updateUser({ 
-            id: user.id, // ensure id is passed
-            subscriptionStatus: SubscriptionStatus.REJECTED, 
-            subscriptionId: undefined, 
-            activeSubscriptionPlanId: undefined, 
-            subscriptionExpiry: undefined, 
-            subscriptionNotes: `Subscription rejected by ${adminId}. Notes: ${adminNotes}` 
-        }, adminId); // Pass adminId for context
-    }
-    return requests[requestIndex];
-  }
-  return undefined;
+  // Simulating the update
+  const requests = await getSubscriptionRequests(); // Single request fetch
+  const request = requests.find(r => r.id === requestId);
+  if (!request) return undefined;
+
+  const user = await getUserById(request.userId);
+  if (!user) return undefined;
+
+  const updatedRequest = {
+    ...request,
+    status: SubscriptionStatus.REJECTED,
+    adminNotes,
+    processedBy: adminId,
+    processedDate: new Date().toISOString(),
+  };
+  await updateUser({ 
+      id: user.id,
+      subscriptionStatus: SubscriptionStatus.REJECTED, 
+      subscriptionId: undefined, 
+      activeSubscriptionPlanId: undefined, 
+      subscriptionExpiry: undefined, 
+      subscriptionNotes: `Subscription rejected by ${adminId}. Notes: ${adminNotes}` 
+  }, adminId);
+
+  return simulateApiCall(updatedRequest);
 };
-export const checkUserSubscriptionStatus = (userId: string): User | undefined => {
-  const user = getUserById(userId);
+
+export const checkUserSubscriptionStatus = async (userId: string): Promise<User | undefined> => {
+  // TODO: API call to GET /api/users/${userId}/subscription-status or user data includes this from backend
+  // Backend should perform expiry checks and plan validity.
+  console.warn(`checkUserSubscriptionStatus: API call not implemented for user ${userId}. Simulating local check.`);
+  const user = await getUserById(userId);
   if (user && user.subscriptionId && user.subscriptionExpiry && user.subscriptionStatus === SubscriptionStatus.ACTIVE) {
     if (new Date(user.subscriptionExpiry) < new Date()) {
       return updateUser({ id: user.id, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription expired." });
     }
-    const planExists = getSubscriptionPlans().some(p => p.id === user.activeSubscriptionPlanId);
+    const plans = await getSubscriptionPlans();
+    const planExists = plans.some(p => p.id === user.activeSubscriptionPlanId);
     if (!planExists) {
         return updateUser({ id: user.id, subscriptionStatus: SubscriptionStatus.CANCELLED, activeSubscriptionPlanId: undefined, subscriptionNotes: "Active subscription plan no longer available."});
     }
   } else if (user && user.subscriptionStatus === SubscriptionStatus.ACTIVE && !user.subscriptionExpiry) {
+    // This case suggests data inconsistency, usually handled by backend or robust data validation
     return updateUser({ id: user.id, subscriptionStatus: SubscriptionStatus.EXPIRED, subscriptionNotes: "Subscription active but expiry date missing, marked as expired." });
   }
-  return user;
+  return simulateApiCall(user);
 };
 
-// PDF Document Management
-export const getPdfDocuments = (): PdfDocument[] => getFromLocalStorage<PdfDocument[]>(LS_PDF_DOCUMENTS, []);
+
+// PDF Document Management (File uploads typically involve multipart/form-data POST to backend)
+export const getPdfDocuments = async (): Promise<PdfDocument[]> => {
+  // TODO: API call to GET /api/pdfs
+  console.warn("getPdfDocuments: API call not implemented. Returning empty array.");
+  return simulateApiCall([]);
+};
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload = () => resolve(reader.result as string); // result is Data URL
     reader.onerror = error => reject(error);
   });
 };
@@ -549,112 +342,89 @@ export const addPdfDocument = async (
     throw new Error("Invalid file type. Only PDF files are allowed.");
   }
 
-  const fileData = await fileToBase64(file);
-  const documents = getPdfDocuments();
-  const newDocument: PdfDocument = {
+  // const fileData = await fileToBase64(file); // For sending base64 to backend
+  // For actual upload, use FormData:
+  const formData = new FormData();
+  formData.append('pdfFile', file);
+  formData.append('description', pdfDetails.description);
+  formData.append('assignedUserIds', JSON.stringify(pdfDetails.assignedUserIds));
+  formData.append('uploadedBy', adminId);
+  
+  // TODO: API call to POST /api/pdfs with formData (multipart/form-data)
+  console.warn("addPdfDocument: API call not implemented. Simulating PDF creation.");
+  const createdDocument: PdfDocument = {
     ...pdfDetails,
     id: `pdf_${Date.now()}`,
     fileName: file.name,
-    fileData,
+    fileData: `data:application/pdf;base64, FAKEDATA...${file.name}`, // Placeholder
     uploadedBy: adminId,
     uploadDate: new Date().toISOString(),
   };
-  documents.push(newDocument);
-  saveToLocalStorage(LS_PDF_DOCUMENTS, documents);
-  return newDocument;
+  return simulateApiCall(createdDocument);
 };
 
-export const updatePdfDocument = (updatedPdf: PdfDocument): PdfDocument | undefined => {
-  let documents = getPdfDocuments();
-  const index = documents.findIndex(doc => doc.id === updatedPdf.id);
-  if (index !== -1) {
-    // Retain original fileData if not explicitly changed to avoid re-uploading or large data transfer
-    if (!updatedPdf.fileData && documents[index].fileData) {
-        updatedPdf.fileData = documents[index].fileData;
-        updatedPdf.fileName = documents[index].fileName;
-    }
-    documents[index] = updatedPdf;
-    saveToLocalStorage(LS_PDF_DOCUMENTS, documents);
-    return documents[index];
-  }
-  return undefined;
+export const updatePdfDocument = async (updatedPdf: Omit<PdfDocument, 'fileData' | 'fileName'> & { fileData?: string, fileName?: string }): Promise<PdfDocument | undefined> => {
+  // If fileData is not being changed, backend may not require re-upload.
+  // Send only metadata (description, assignedUserIds)
+  // TODO: API call to PUT /api/pdfs/${updatedPdf.id} with metadata
+  console.warn(`updatePdfDocument: API call not implemented for PDF ${updatedPdf.id}.`);
+  return simulateApiCall(updatedPdf as PdfDocument); // Cast needed due to partial fileData/fileName
 };
 
-export const deletePdfDocument = (pdfId: string): boolean => {
-  let documents = getPdfDocuments();
-  const initialLength = documents.length;
-  documents = documents.filter(doc => doc.id !== pdfId);
-  if (documents.length < initialLength) {
-    saveToLocalStorage(LS_PDF_DOCUMENTS, documents);
-    return true;
-  }
-  return false;
+export const deletePdfDocument = async (pdfId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/pdfs/${pdfId}
+  console.warn(`deletePdfDocument: API call not implemented for PDF ${pdfId}.`);
+  return simulateApiCall(true);
 };
 
-export const getPdfsForUser = (userId: string): PdfDocument[] => {
-  const documents = getPdfDocuments();
-  return documents.filter(doc => doc.assignedUserIds.includes(userId));
+export const getPdfsForUser = async (userId: string): Promise<PdfDocument[]> => {
+  // TODO: API call to GET /api/pdfs?userId=${userId} or /api/users/${userId}/pdfs
+  console.warn(`getPdfsForUser: API call not implemented for user ${userId}.`);
+  return simulateApiCall([]);
 };
+
 
 // Global Notifications Management
-export const addGlobalNotification = (message: string, siteManagerId: string): Notification => {
-  const notifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
-  const newNotification: Notification = {
-    id: `gnotify_${Date.now()}`,
+export const addGlobalNotification = async (message: string, siteManagerId: string): Promise<Notification> => {
+  const newNotificationPayload: Omit<Notification, 'id'> = {
     message,
     senderId: siteManagerId,
     timestamp: new Date().toISOString(),
-    isGlobal: true,
-    readByUserIds: [], // Initially unread by all
+    isGlobal: true, // This is now type-checked correctly against Notification['isGlobal']
+    readByUserIds: [], // Backend might handle this differently
   };
-  notifications.unshift(newNotification); // Add to the beginning for newest first
-  saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, notifications);
-  return newNotification;
+  // TODO: API call to POST /api/notifications with newNotificationPayload
+  console.warn("addGlobalNotification: API call not implemented.");
+  const createdNotification: Notification = { ...newNotificationPayload, id: `gnotify_${Date.now()}` };
+  return simulateApiCall(createdNotification);
 };
 
-export const getGlobalNotificationsForUser = (userId: string): Notification[] => {
-  const allNotifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
-  return allNotifications.filter(n => !n.readByUserIds.includes(userId));
+export const getGlobalNotificationsForUser = async (userId: string): Promise<Notification[]> => {
+  // TODO: API call to GET /api/notifications?userId=${userId} (backend filters for unread)
+  console.warn(`getGlobalNotificationsForUser: API call not implemented for user ${userId}.`);
+  return simulateApiCall([]);
 };
 
-export const markGlobalNotificationAsReadForUser = (notificationId: string, userId: string): boolean => {
-  let notifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
-  const notificationIndex = notifications.findIndex(n => n.id === notificationId);
-  if (notificationIndex > -1) {
-    if (!notifications[notificationIndex].readByUserIds.includes(userId)) {
-      notifications[notificationIndex].readByUserIds.push(userId);
-      saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, notifications);
-      return true;
-    }
-  }
-  return false;
+export const markGlobalNotificationAsReadForUser = async (notificationId: string, userId: string): Promise<boolean> => {
+  // TODO: API call to POST /api/notifications/${notificationId}/read with { userId }
+  console.warn(`markGlobalNotificationAsReadForUser: API call not implemented for notification ${notificationId}.`);
+  return simulateApiCall(true);
 };
 
-export const markAllGlobalNotificationsAsReadForUser = (userId: string): void => {
-  let notifications = getFromLocalStorage<Notification[]>(LS_GLOBAL_NOTIFICATIONS, []);
-  let changed = false;
-  notifications.forEach(notification => {
-    if (!notification.readByUserIds.includes(userId)) {
-      notification.readByUserIds.push(userId);
-      changed = true;
-    }
-  });
-  if (changed) {
-    saveToLocalStorage(LS_GLOBAL_NOTIFICATIONS, notifications);
-  }
+export const markAllGlobalNotificationsAsReadForUser = async (userId: string): Promise<void> => {
+  // TODO: API call to POST /api/notifications/read-all with { userId }
+  console.warn(`markAllGlobalNotificationsAsReadForUser: API call not implemented for user ${userId}.`);
+  return simulateApiCall(undefined);
 };
 
 // Transformation Posts Management
-export const getTransformationPosts = (): TransformationPost[] => getFromLocalStorage<TransformationPost[]>(LS_TRANSFORMATION_POSTS, []);
-export const getTransformationPostById = (postId: string): TransformationPost | undefined => getTransformationPosts().find(p => p.id === postId);
-
-const imageFileToBase64Service = (file: File): Promise<string> => {
+const imageFileToBase64Service = (file: File): Promise<string> => { // Remains a utility
   return new Promise((resolve, reject) => {
     if (file.size > TRANSFORMATION_IMAGE_MAX_SIZE_BYTES) {
       reject(new Error(`File is too large. Max size: ${TRANSFORMATION_IMAGE_MAX_SIZE_BYTES / (1024 * 1024)}MB`));
       return;
     }
-     if (!file.type.startsWith('image/')) { // Basic image type check
+     if (!file.type.startsWith('image/')) {
         reject(new Error("Invalid file type. Only images are allowed."));
         return;
     }
@@ -665,134 +435,147 @@ const imageFileToBase64Service = (file: File): Promise<string> => {
   });
 };
 
+export const getTransformationPosts = async (): Promise<TransformationPost[]> => {
+  // TODO: API call to GET /api/transformations
+  console.warn("getTransformationPosts: API call not implemented. Returning empty array.");
+  return simulateApiCall([]);
+};
+
+export const getTransformationPostById = async (postId: string): Promise<TransformationPost | undefined> => {
+  // TODO: API call to GET /api/transformations/${postId}
+  console.warn(`getTransformationPostById: API call not implemented for post ${postId}.`);
+  return simulateApiCall(undefined);
+};
+
 export const addTransformationPost = async (
   postData: Omit<TransformationPost, 'id' | 'createdAt' | 'likes' | 'commentsCount' | 'userName' | 'userProfileImage' | 'beforeImageUrl' | 'afterImageUrl'>,
   beforeFile: File,
   afterFile: File,
   creator: User
 ): Promise<TransformationPost> => {
-  const posts = getTransformationPosts();
-  const beforeImageUrl = await imageFileToBase64Service(beforeFile);
-  const afterImageUrl = await imageFileToBase64Service(afterFile);
+  // Images might be uploaded first to get URLs, or sent as multipart/form-data
+  const beforeImageUrlBase64 = await imageFileToBase64Service(beforeFile); // for simulation
+  const afterImageUrlBase64 = await imageFileToBase64Service(afterFile);   // for simulation
 
-  const newPost: TransformationPost = {
+  const newPostPayload = {
     ...postData,
+    userName: creator.name, // Snapshot
+    userProfileImage: creator.profileImage, // Snapshot
+    // In real API, you'd send files or URLs from an image storage service
+  };
+  // TODO: API call to POST /api/transformations (likely multipart/form-data with files)
+  // Or: POST /api/transformations with metadata, after images are uploaded elsewhere and URLs are obtained.
+  console.warn("addTransformationPost: API call not implemented. Simulating post creation.");
+  const createdPost: TransformationPost = {
+    ...newPostPayload,
     id: `tp_${Date.now()}`,
-    userName: creator.name,
-    userProfileImage: creator.profileImage,
-    beforeImageUrl,
-    afterImageUrl,
+    beforeImageUrl: beforeImageUrlBase64, // Placeholder URL
+    afterImageUrl: afterImageUrlBase64,   // Placeholder URL
     createdAt: new Date().toISOString(),
     likes: [],
     commentsCount: 0,
   };
-  posts.push(newPost);
-  saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
-  return newPost;
+  return simulateApiCall(createdPost);
 };
 
-const deleteTransformationPostInternal = (postId: string): void => {
-    let posts = getTransformationPosts();
-    posts = posts.filter(p => p.id !== postId);
-    saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
-    // Also delete all comments associated with this post
-    let comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
-    comments = comments.filter(c => c.postId !== postId);
-    saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, comments);
-}
-
-export const deleteTransformationPost = (postId: string, adminUserId: string): boolean => {
-  const adminUser = getUserById(adminUserId);
-  if (!adminUser || (adminUser.role !== UserRole.ADMIN && adminUser.role !== UserRole.SITE_MANAGER)) {
-    throw new Error("Action not allowed. Admin rights required.");
-  }
-  const post = getTransformationPostById(postId);
-  if (!post) return false;
-
-  deleteTransformationPostInternal(postId);
-  return true;
+export const deleteTransformationPost = async (postId: string, adminUserId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/transformations/${postId} (backend verifies adminUserId)
+  console.warn(`deleteTransformationPost: API call not implemented for post ${postId}.`);
+  // Backend also deletes associated comments.
+  return simulateApiCall(true);
 };
 
-export const likeTransformationPost = (postId: string, userId: string): TransformationPost | undefined => {
-  let posts = getTransformationPosts();
-  const postIndex = posts.findIndex(p => p.id === postId);
-  if (postIndex === -1) return undefined;
-  if (!posts[postIndex].likes.includes(userId)) {
-    posts[postIndex].likes.push(userId);
-    saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
-  }
-  return posts[postIndex];
+export const likeTransformationPost = async (postId: string, userId: string): Promise<TransformationPost | undefined> => {
+  // TODO: API call to POST /api/transformations/${postId}/like with { userId }
+  console.warn(`likeTransformationPost: API call not implemented for post ${postId}.`);
+  // Simulate: fetch post, add like, return updated post
+  // const post = await getTransformationPostById(postId);
+  // if (post && !post.likes.includes(userId)) post.likes.push(userId);
+  // return simulateApiCall(post);
+  return simulateApiCall(undefined); // Simpler simulation
 };
 
-export const unlikeTransformationPost = (postId: string, userId: string): TransformationPost | undefined => {
-  let posts = getTransformationPosts();
-  const postIndex = posts.findIndex(p => p.id === postId);
-  if (postIndex === -1) return undefined;
-  posts[postIndex].likes = posts[postIndex].likes.filter(uid => uid !== userId);
-  saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
-  return posts[postIndex];
+export const unlikeTransformationPost = async (postId: string, userId: string): Promise<TransformationPost | undefined> => {
+  // TODO: API call to POST /api/transformations/${postId}/unlike with { userId }
+  console.warn(`unlikeTransformationPost: API call not implemented for post ${postId}.`);
+  // Simulate: fetch post, remove like, return updated post
+  // const post = await getTransformationPostById(postId);
+  // if (post) post.likes = post.likes.filter(uid => uid !== userId);
+  // return simulateApiCall(post);
+  return simulateApiCall(undefined); // Simpler simulation
 };
+
 
 // Transformation Comments Management
-export const getCommentsForPost = (postId: string): TransformationComment[] => {
-  const comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
-  return comments.filter(c => c.postId === postId).sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+export const getCommentsForPost = async (postId: string): Promise<TransformationComment[]> => {
+  // TODO: API call to GET /api/transformations/${postId}/comments
+  console.warn(`getCommentsForPost: API call not implemented for post ${postId}.`);
+  return simulateApiCall([]);
 };
 
-export const addTransformationComment = (
+export const addTransformationComment = async (
   commentData: Omit<TransformationComment, 'id' | 'createdAt' | 'userName' | 'userProfileImage'>,
   commenter: User
-): TransformationComment => {
-  const comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
-  const newComment: TransformationComment = {
+): Promise<TransformationComment> => {
+  const newCommentPayload = {
     ...commentData,
-    id: `tc_${Date.now()}`,
-    userName: commenter.name,
-    userProfileImage: commenter.profileImage,
+    userName: commenter.name, // Snapshot
+    userProfileImage: commenter.profileImage, // Snapshot
     createdAt: new Date().toISOString(),
   };
-  comments.push(newComment);
-  saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, comments);
-
-  // Update commentsCount on the parent post
-  let posts = getTransformationPosts();
-  const postIndex = posts.findIndex(p => p.id === commentData.postId);
-  if (postIndex !== -1) {
-    posts[postIndex].commentsCount = (posts[postIndex].commentsCount || 0) + 1;
-    saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
-  }
-  return newComment;
+  // TODO: API call to POST /api/transformations/${commentData.postId}/comments with newCommentPayload
+  // Backend should also update commentsCount on the parent post.
+  console.warn("addTransformationComment: API call not implemented. Simulating comment creation.");
+  const createdComment: TransformationComment = { ...newCommentPayload, id: `tc_${Date.now()}` };
+  return simulateApiCall(createdComment);
 };
 
-const deleteTransformationCommentInternal = (commentId: string, isCascadeFromUserDelete = false): void => {
-    let comments = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []);
-    const commentIndex = comments.findIndex(c => c.id === commentId);
-    if (commentIndex === -1) return;
+export const deleteTransformationComment = async (commentId: string, adminOrOwnerId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/comments/${commentId} (backend verifies adminOrOwnerId)
+  // Backend should also update commentsCount on the parent post.
+  console.warn(`deleteTransformationComment: API call not implemented for comment ${commentId}.`);
+  return simulateApiCall(true);
+};
 
-    const commentToDelete = comments[commentIndex];
-    comments.splice(commentIndex, 1);
-    saveToLocalStorage(LS_TRANSFORMATION_COMMENTS, comments);
+// External Resource Links Management
+export const getExternalResourceLinks = async (): Promise<ExternalResourceLink[]> => {
+  // TODO: API call to GET /api/resource-links
+  console.warn("getExternalResourceLinks: API call not implemented. Returning empty array.");
+  return simulateApiCall([]);
+};
 
-    // Update commentsCount on the parent post
-    let posts = getTransformationPosts();
-    const postIndex = posts.findIndex(p => p.id === commentToDelete.postId);
-    if (postIndex !== -1) {
-      posts[postIndex].commentsCount = Math.max(0, (posts[postIndex].commentsCount || 0) - 1);
-      saveToLocalStorage(LS_TRANSFORMATION_POSTS, posts);
-    }
-}
+export const addExternalResourceLink = async (
+  linkDetails: Omit<ExternalResourceLink, 'id' | 'addedDate' | 'addedBy'>,
+  adminId: string
+): Promise<ExternalResourceLink> => {
+  // TODO: API call to POST /api/resource-links with linkDetails & adminId
+  console.warn("addExternalResourceLink: API call not implemented. Simulating link creation.");
+  const newLink: ExternalResourceLink = {
+    ...linkDetails,
+    id: `reslink_${Date.now()}`,
+    addedBy: adminId,
+    addedDate: new Date().toISOString(),
+  };
+  return simulateApiCall(newLink);
+};
 
-export const deleteTransformationComment = (commentId: string, adminUserId: string): boolean => {
-  const adminUser = getUserById(adminUserId);
-  const comment = getFromLocalStorage<TransformationComment[]>(LS_TRANSFORMATION_COMMENTS, []).find(c => c.id === commentId);
+export const updateExternalResourceLink = async (updatedLink: ExternalResourceLink): Promise<ExternalResourceLink | undefined> => {
+  // TODO: API call to PUT /api/resource-links/${updatedLink.id} with updatedLink
+  console.warn(`updateExternalResourceLink: API call not implemented for link ${updatedLink.id}.`);
+  return simulateApiCall(updatedLink);
+};
 
-  if (!comment) return false;
+export const deleteExternalResourceLink = async (linkId: string): Promise<boolean> => {
+  // TODO: API call to DELETE /api/resource-links/${linkId}
+  console.warn(`deleteExternalResourceLink: API call not implemented for link ${linkId}.`);
+  return simulateApiCall(true);
+};
 
-  // Allow admin or owner of comment to delete
-  if (!adminUser || ((adminUser.role !== UserRole.ADMIN && adminUser.role !== UserRole.SITE_MANAGER) && comment.userId !== adminUserId) ) {
-     throw new Error("Action not allowed. Admin rights or ownership required.");
-  }
-  
-  deleteTransformationCommentInternal(commentId);
-  return true;
+export const getExternalResourceLinksForUser = async (userId: string): Promise<ExternalResourceLink[]> => {
+  // TODO: API call to GET /api/resource-links?userId=${userId} or /api/users/${userId}/resource-links
+  // This simulation fetches all and filters, backend would be more efficient.
+  console.warn(`getExternalResourceLinksForUser: API call not implemented for user ${userId}. Simulating.`);
+  const allLinks = await getExternalResourceLinks();
+  const userLinks = allLinks.filter(link => link.assignedUserIds.includes(userId));
+  return simulateApiCall(userLinks);
 };

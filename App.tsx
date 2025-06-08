@@ -8,7 +8,7 @@ import AuthPage from './pages/AuthPage';
 import UserPages from './pages/UserPages';
 import ContentPages from './pages/ContentPages';
 import AdminPage from './pages/AdminPage';
-import TransformationsPage from './pages/TransformationsPage'; // Import the new page
+import { TransformationsPage } from './pages/TransformationsPage';
 import { Spinner, LoadingOverlay, Button, ProtectedRoute } from './components/CommonUI';
 
 
@@ -18,14 +18,14 @@ interface AuthContextType {
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
   loading: boolean;
-  isAdmin: boolean; // True if ADMIN or SITE_MANAGER
-  isSiteManager: boolean; // True only if SITE_MANAGER
+  isAdmin: boolean;
+  isSiteManager: boolean;
   isSubscribed: boolean;
-  refreshUser: () => void;
+  refreshUser: () => Promise<void>;
   unreadNotifications: Notification[];
-  refreshNotifications: () => void;
-  markNotificationAsRead: (notificationId: string) => void;
-  markAllNotificationsAsRead: () => void;
+  refreshNotifications: () => Promise<void>;
+  markNotificationAsRead: (notificationId: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
 }
 export const AuthContext = createContext<AuthContextType>(null!);
 
@@ -64,71 +64,104 @@ export const useLocalization = (): LocalizationContextType => {
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUserInternal] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [language, setLanguageState] = useState('ar'); // Default to Arabic
+  const [appLoading, setAppLoading] = useState(true); // Renamed from 'loading' to avoid conflict with context's loading
+  const [language, setLanguageState] = useState('ar');
   const [translations, setTranslations] = useState<Translations>(AR_TRANSLATIONS);
   const [unreadNotifications, setUnreadNotifications] = useState<Notification[]>([]);
 
   const setCurrentUser = (user: User | null) => {
     setCurrentUserInternal(user);
     if (user) {
-      localStorage.setItem('fitzone_currentUserEmail', user.email);
-      fetchUnreadNotifications(user.id); // Fetch notifications for new user
+      // No longer storing email in localStorage for session, backend session/token would handle this
+      // localStorage.setItem('fitzone_currentUserEmail', user.email); 
+      fetchUnreadNotifications(user.id);
     } else {
-      localStorage.removeItem('fitzone_currentUserEmail');
-      setUnreadNotifications([]); // Clear notifications on logout
+      // localStorage.removeItem('fitzone_currentUserEmail');
+      setUnreadNotifications([]);
     }
   };
   
-  const refreshUser = useCallback(() => {
+  const refreshUser = useCallback(async () => {
     if (currentUser) {
-      const updatedUser = DataService.checkUserSubscriptionStatus(currentUser.id);
-      if (updatedUser) {
-         setCurrentUserInternal(updatedUser); 
+      try {
+        const updatedUser = await DataService.checkUserSubscriptionStatus(currentUser.id);
+        if (updatedUser) {
+           setCurrentUserInternal(updatedUser); 
+        }
+      } catch (error) {
+        console.error("Error refreshing user status:", error);
       }
     }
   }, [currentUser]);
 
-  const fetchUnreadNotifications = useCallback((userId: string) => {
-    const notifications = DataService.getGlobalNotificationsForUser(userId);
-    setUnreadNotifications(notifications);
+  const fetchUnreadNotifications = useCallback(async (userId: string) => {
+    try {
+      const notifications = await DataService.getGlobalNotificationsForUser(userId);
+      setUnreadNotifications(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      setUnreadNotifications([]);
+    }
   }, []);
 
-  const refreshNotifications = useCallback(() => {
+  const refreshNotifications = useCallback(async () => {
     if (currentUser) {
-      fetchUnreadNotifications(currentUser.id);
+      await fetchUnreadNotifications(currentUser.id);
     }
   }, [currentUser, fetchUnreadNotifications]);
 
-  const markNotificationAsRead = useCallback((notificationId: string) => {
+  const markNotificationAsRead = useCallback(async (notificationId: string) => {
     if (currentUser) {
-      DataService.markGlobalNotificationAsReadForUser(notificationId, currentUser.id);
-      refreshNotifications();
+      try {
+        await DataService.markGlobalNotificationAsReadForUser(notificationId, currentUser.id);
+        await refreshNotifications();
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+      }
     }
   }, [currentUser, refreshNotifications]);
 
-  const markAllNotificationsAsRead = useCallback(() => {
+  const markAllNotificationsAsRead = useCallback(async () => {
     if (currentUser) {
-      DataService.markAllGlobalNotificationsAsReadForUser(currentUser.id);
-      refreshNotifications();
+      try {
+        await DataService.markAllGlobalNotificationsAsReadForUser(currentUser.id);
+        await refreshNotifications();
+      } catch (error) {
+        console.error("Error marking all notifications as read:", error);
+      }
     }
   }, [currentUser, refreshNotifications]);
 
 
   useEffect(() => {
-    const storedUserEmail = localStorage.getItem('fitzone_currentUserEmail');
-    if (storedUserEmail) {
-      const user = DataService.getUserByEmail(storedUserEmail);
-      if (user) {
-        const checkedUser = DataService.checkUserSubscriptionStatus(user.id);
-        setCurrentUserInternal(checkedUser || user);
-        fetchUnreadNotifications(user.id);
-      }
-    }
-    setLoading(false);
-  }, [fetchUnreadNotifications]);
+    const loadInitialUser = async () => {
+      // In a real app with backend auth, you'd check for a session token here
+      // const storedUserEmail = localStorage.getItem('fitzone_currentUserEmail'); // Example: session recovery
+      // For now, we assume no session recovery via localStorage. User must log in.
+      // If you had a token, you'd validate it with the backend.
+      // Example:
+      // const token = localStorage.getItem('authToken');
+      // if (token) {
+      //   try {
+      //     const userFromToken = await DataService.validateTokenAndGetUser(token); // Hypothetical function
+      //     if (userFromToken) {
+      //       const checkedUser = await DataService.checkUserSubscriptionStatus(userFromToken.id);
+      //       setCurrentUserInternal(checkedUser || userFromToken);
+      //       await fetchUnreadNotifications(userFromToken.id);
+      //     }
+      //   } catch (error) {
+      //     console.error("Session validation failed", error);
+      //     localStorage.removeItem('authToken'); // Clear invalid token
+      //   }
+      // }
+      setAppLoading(false);
+    };
+    loadInitialUser();
+  }, []); // Removed fetchUnreadNotifications from dependency array as it's called after user is set
 
   const logout = () => {
+    // In a real app, also invalidate backend session/token
+    // localStorage.removeItem('authToken');
     setCurrentUser(null);
   };
 
@@ -139,8 +172,6 @@ const App: React.FC = () => {
       document.documentElement.lang = 'ar';
       document.documentElement.dir = 'rtl';
     } else {
-      // Add English translations if needed, or fallback
-      // setTranslations(EN_TRANSLATIONS); 
       document.documentElement.lang = 'en';
       document.documentElement.dir = 'ltr';
     }
@@ -163,13 +194,13 @@ const App: React.FC = () => {
   const isSubscribed = currentUser?.role !== UserRole.ADMIN && currentUser?.role !== UserRole.SITE_MANAGER && currentUser?.subscriptionStatus === 'active' && !!currentUser.subscriptionExpiry && new Date(currentUser.subscriptionExpiry) > new Date();
 
 
-  if (loading) {
+  if (appLoading) {
     return <LoadingOverlay message={AR_TRANSLATIONS.loading as string || "جاري التحميل..."} />;
   }
 
   return (
     <AuthContext.Provider value={{ 
-        currentUser, setCurrentUser, logout, loading, isAdmin, isSiteManager, isSubscribed, refreshUser,
+        currentUser, setCurrentUser, logout, loading: appLoading, isAdmin, isSiteManager, isSubscribed, refreshUser,
         unreadNotifications, refreshNotifications, markNotificationAsRead, markAllNotificationsAsRead 
     }}>
       <LocalizationContext.Provider value={{ language, setLanguage, translations: language === 'ar' ? AR_TRANSLATIONS : AR_TRANSLATIONS, t: tAppScope }}>
@@ -182,7 +213,6 @@ const App: React.FC = () => {
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/user/*" element={<UserPages />} />
                 <Route path="/content/*" element={<ContentPages />} />
-                {/* Updated ProtectedRoute for /transformations: all logged-in users can view. Posting is restricted within the page. */}
                 <Route path="/transformations" element={<ProtectedRoute><TransformationsPage /></ProtectedRoute>} />
                 <Route path="/admin/*" element={isAdmin ? <AdminPage /> : <NavigateToDashboard message={(AR_TRANSLATIONS.adminAccessOnly as string || 'Admin access only')} />} />
                 <Route path="*" element={<NotFoundPage />} />
@@ -223,7 +253,7 @@ const Navbar: React.FC = () => {
   const handleLogout = () => {
     logout();
     navigate('/auth');
-    setMobileMenuOpen(false); // Close mobile menu on logout
+    setMobileMenuOpen(false);
   };
 
   const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
@@ -258,14 +288,12 @@ const Navbar: React.FC = () => {
             {t('appName')}
           </Link>
           
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1 xs:space-x-2 sm:space-x-3 rtl:space-x-reverse">
             {currentUser ? (
               <>
                 <NavLink to="/user/dashboard" className={navLinkClasses}>{NavIcons.dashboard} <span className="hidden sm:inline">{t('dashboard')}</span></NavLink>
                 {(isSubscribed || isAdmin) && <NavLink to="/content/workouts" className={navLinkClasses}>{NavIcons.workouts} <span className="hidden sm:inline">{t('workouts')}</span></NavLink>}
                 {(isSubscribed || isAdmin) && <NavLink to="/content/nutrition" className={navLinkClasses}>{NavIcons.nutrition} <span className="hidden sm:inline">{t('nutrition')}</span></NavLink>}
-                {/* Transformations link visible to all logged-in users */}
                 <NavLink to="/transformations" className={navLinkClasses}>{NavIcons.transformations} <span className="hidden sm:inline">{t('transformations')}</span></NavLink>
                 {(!isAdmin || currentUser.role === UserRole.USER) && <NavLink to="/user/subscriptions" className={navLinkClasses}>{t('subscriptions')}</NavLink>}
                 {isAdmin && <NavLink to="/admin" className={navLinkClasses}>{NavIcons.admin} <span className="hidden sm:inline">{t('adminPanel')}</span></NavLink>}
@@ -277,7 +305,6 @@ const Navbar: React.FC = () => {
           </div>
 
           <div className="flex items-center">
-            {/* Notification Bell - Always visible if user is logged in */}
             {currentUser && (
                 <div className="relative" ref={notificationRef}>
                     <button onClick={toggleNotifications} className={`p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-${THEME_COLORS.primary} transition-colors`}>
@@ -320,7 +347,6 @@ const Navbar: React.FC = () => {
                 </div>
             )}
 
-            {/* Mobile Menu Button */}
             <div className="md:hidden flex items-center">
                 {currentUser && (
                     <button
@@ -350,7 +376,6 @@ const Navbar: React.FC = () => {
                     )}
                 </button>
             </div>
-            {/* Logout Button for Desktop - visible only if user logged in */}
              {currentUser && (
               <div className="hidden md:flex items-center">
                 <button onClick={handleLogout} className={navLinkClasses({isActive:false})}>
@@ -365,9 +390,7 @@ const Navbar: React.FC = () => {
              )}
           </div>
         </div>
-      </div> {/* This closes the container div */}
 
-        {/* Mobile menu, show/hide based on menu state. */}
         {mobileMenuOpen && (
             <div className="md:hidden" id="mobile-menu">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">

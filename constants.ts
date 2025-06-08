@@ -1,5 +1,5 @@
 
-import { UserRole, DefaultSubscriptionPlanId, SubscriptionPlan, Translations, WorkoutVideo, Recipe, SubscriptionPlanFeature } from './types';
+import { UserRole, DefaultSubscriptionPlanId, SubscriptionPlan, Translations, WorkoutVideo, Recipe, SubscriptionPlanFeature, ExternalResourceCategory } from './types';
 
 export const APP_NAME = "My Fit Coach";
 export const ADMIN_EMAIL = "lolelarap@gmail.com"; // Hardcoded admin email updated
@@ -9,12 +9,12 @@ export const THEME_COLORS = {
   primaryHover: 'sky-700',
   secondary: 'lime-500',
   secondaryHover: 'lime-600',
-  accent: 'rose-500', // Changed from amber
+  accent: 'rose-500', 
   accentHover: 'rose-600',
-  background: 'slate-900', // Slightly softer dark
-  surface: 'slate-800', // For cards, modals
-  textPrimary: 'slate-100', // Brighter white for primary text
-  textSecondary: 'slate-400', // Softer gray for secondary text
+  background: 'slate-950', // Darker background
+  surface: 'slate-900',    // Darker cards/modals
+  textPrimary: 'slate-50', // Brighter white for primary text on very dark bg
+  textSecondary: 'slate-400', 
   error: 'red-500',
   success: 'green-500',
 };
@@ -43,6 +43,14 @@ export const COUNTRIES_LIST = [
 ];
 
 export const TRANSFORMATION_IMAGE_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+export const PDF_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for PDFs
+
+export const EXTERNAL_RESOURCE_CATEGORIES = [
+  { id: ExternalResourceCategory.WORKOUT_PLAN, name_key: 'workoutPlan' },
+  { id: ExternalResourceCategory.NUTRITION_GUIDE, name_key: 'nutritionGuide' },
+  { id: ExternalResourceCategory.INFORMATIONAL_ARTICLE, name_key: 'informationalArticle' },
+  { id: ExternalResourceCategory.OTHER, name_key: 'otherCategory' },
+];
 
 export const AR_TRANSLATIONS: Translations = {
   appName: "My Fit Coach",
@@ -303,6 +311,28 @@ export const AR_TRANSLATIONS: Translations = {
   commentDeletedSuccess: "تم حذف التعليق بنجاح.",
   manageTransformations: "إدارة التحولات",
   viewPostDetails: "عرض التفاصيل والتعليقات",
+
+  // External Resource Links Feature
+  manageResourceLinks: "إدارة روابط المصادر",
+  addResourceLink: "إضافة رابط مصدر",
+  editResourceLink: "تعديل رابط المصدر",
+  resourceLinkTitle: "عنوان المصدر",
+  resourceLinkURL: "رابط المصدر (URL)",
+  resourceLinkDescription: "وصف المصدر (اختياري)",
+  resourceLinkCategory: "فئة المصدر",
+  myLearningResources: "خططي ومصادري التعليمية",
+  noResourcesAssigned: "لا توجد مصادر مخصصة لك حاليًا.",
+  openLink: "افتح الرابط",
+  resourceLinkAddedSuccess: "تمت إضافة رابط المصدر بنجاح.",
+  resourceLinkUpdatedSuccess: "تم تحديث رابط المصدر بنجاح.",
+  resourceLinkDeletedSuccess: "تم حذف رابط المصدر بنجاح.",
+  noResourceLinksUploaded: "لم يتم إضافة أي روابط مصادر بعد.",
+  confirmDeleteResourceLink: "هل أنت متأكد أنك تريد حذف رابط المصدر هذا؟",
+  workoutPlan: "خطة تمارين",
+  nutritionGuide: "دليل تغذية",
+  informationalArticle: "مقال معلوماتي",
+  otherCategory: "أخرى",
+  urlInvalid: "الرابط المدخل غير صالح. يجب أن يبدأ بـ http:// أو https://",
 };
 
 export const INITIAL_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
@@ -429,4 +459,3 @@ export const INITIAL_RECIPES: Recipe[] = [
 
 export const GEMINI_MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
 export const GEMINI_NUTRITION_SYSTEM_INSTRUCTION = "أنت مساعد تغذية خبير. قدم نصائح وإجابات واضحة ومفيدة حول التغذية والوصفات الصحية. تحدث باللغة العربية. اجعل إجاباتك موجزة ومباشرة ما لم يُطلب منك التفصيل.";
-export const PDF_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for PDFs in localStorage

@@ -2,10 +2,10 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, useLocalization } from '../App';
-import { ProtectedRoute, Button, Input, Card, Spinner, Textarea } from '../components/CommonUI';
+import { ProtectedRoute, Button, Input, Card, Spinner, Textarea, LoadingOverlay } from '../components/CommonUI';
 import * as DataService from '../services/dataService';
-import { UserStats, SubscriptionPlan, SubscriptionStatus, PdfDocument, SubscriptionPlanFeature, UserRole } from '../types';
-import { THEME_COLORS, ADMIN_EMAIL, COUNTRIES_LIST } from '../constants';
+import { UserStats, SubscriptionPlan, SubscriptionStatus, PdfDocument, UserRole, ExternalResourceLink, ExternalResourceCategory } from '../types';
+import { THEME_COLORS, ADMIN_EMAIL, COUNTRIES_LIST, EXTERNAL_RESOURCE_CATEGORIES } from '../constants';
 
 const UserPages: React.FC = () => {
   return (
@@ -23,28 +23,55 @@ const DashboardPage: React.FC = () => {
   const { t } = useLocalization();
   const navigate = useNavigate();
   const location = useLocation();
-  const [message, setMessage] = useState(location.state?.message);
+  const [pageMessage, setPageMessage] = useState(location.state?.message); 
   const [currentPlanDetails, setCurrentPlanDetails] = useState<SubscriptionPlan | null>(null);
   const [assignedPdfs, setAssignedPdfs] = useState<PdfDocument[]>([]);
+  const [assignedResourceLinks, setAssignedResourceLinks] = useState<ExternalResourceLink[]>([]);
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
 
   useEffect(() => {
-    refreshUser(); 
-    if (location.state?.message) {
+    const initDashboard = async () => {
+      setLoadingDashboard(true);
+      if (currentUser) {
+        await refreshUser(); 
+      }
+      if (location.state?.message) {
+        setPageMessage(location.state.message);
         navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.state, navigate, refreshUser]);
+      }
+      setLoadingDashboard(false);
+    };
+    initDashboard();
+  }, [location.state, navigate, refreshUser, currentUser]); 
   
   useEffect(() => {
-    if (currentUser) {
-        if (currentUser.activeSubscriptionPlanId && currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE) {
-            const plan = DataService.getSubscriptionPlans().find(p => p.id === currentUser.activeSubscriptionPlanId);
+    const fetchData = async () => {
+      if (currentUser) {
+        setLoadingDashboard(true);
+        try {
+          if (currentUser.activeSubscriptionPlanId && currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE) {
+            const plans = await DataService.getSubscriptionPlans();
+            const plan = plans.find(p => p.id === currentUser.activeSubscriptionPlanId);
             setCurrentPlanDetails(plan || null);
-        } else {
+          } else {
             setCurrentPlanDetails(null);
+          }
+          const pdfs = await DataService.getPdfsForUser(currentUser.id);
+          setAssignedPdfs(pdfs);
+          const resourceLinks = await DataService.getExternalResourceLinksForUser(currentUser.id);
+          setAssignedResourceLinks(resourceLinks);
+        } catch (error) {
+          console.error("Error fetching dashboard data:", error);
+        } finally {
+          setLoadingDashboard(false);
         }
-        setAssignedPdfs(DataService.getPdfsForUser(currentUser.id));
-    }
-  }, [currentUser]);
+      } else {
+        setLoadingDashboard(false);
+      }
+    };
+    fetchData();
+  }, [currentUser]); 
+
 
   const handleDownloadPdf = (pdf: PdfDocument) => {
     const link = document.createElement('a');
@@ -55,20 +82,26 @@ const DashboardPage: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  if (!currentUser) return <Spinner />;
+  const getResourceCategoryName = (categoryId: ExternalResourceCategory) => {
+    const category = EXTERNAL_RESOURCE_CATEGORIES.find(c => c.id === categoryId);
+    return category ? t(category.name_key, categoryId) : categoryId;
+  };
+
+  if (loadingDashboard) return <LoadingOverlay message={t('loading')} />;
+  if (!currentUser) return <Spinner />; 
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {message && <div className={`p-3 sm:p-4 mb-4 text-xs sm:text-sm rounded-lg bg-opacity-20 ${message.includes('محظور') || message.includes('denied') ? `bg-red-500 text-red-300` : `bg-yellow-500 text-yellow-300`}`}>{message}</div>}
+      {pageMessage && <div className={`p-3 sm:p-4 mb-4 text-xs sm:text-sm rounded-lg bg-opacity-20 ${pageMessage.includes('محظور') || pageMessage.includes('denied') ? `bg-red-500 text-red-300` : `bg-yellow-500 text-yellow-300`}`}>{pageMessage}</div>}
       <h1 className="text-2xl sm:text-3xl font-bold text-white">{t('dashboard')}</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
-        <Card className="p-4 sm:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+        <Card className="p-4 sm:p-6 lg:col-span-2">
           <h2 className="text-xl sm:text-2xl font-semibold text-emerald-400 mb-3 sm:mb-4">{t('myStats')}</h2>
           <StatsTracker />
         </Card>
 
-        <div className="space-y-4 sm:space-y-6 md:space-y-8">
+        <div className="space-y-4 sm:space-y-6 md:space-y-8 lg:col-span-1">
             <Card className="p-4 sm:p-6">
                 <h2 className="text-xl sm:text-2xl font-semibold text-sky-400 mb-3 sm:mb-4">{t('currentPlan')}</h2>
                 {currentUser.subscriptionStatus === SubscriptionStatus.ACTIVE && currentPlanDetails && currentUser.subscriptionExpiry ? (
@@ -81,7 +114,7 @@ const DashboardPage: React.FC = () => {
                     <p className="text-slate-300 text-xs sm:text-sm mt-2">{t('expiresOn')}: {new Date(currentUser.subscriptionExpiry).toLocaleDateString('ar-EG')}</p>
                 </div>
                 ) : currentUser.subscriptionStatus === SubscriptionStatus.PENDING ? (
-                <p className="text-yellow-400 text-sm sm:text-base">{t('pendingApproval')} - {DataService.getSubscriptionRequests().find(r => r.userId === currentUser.id && r.status === SubscriptionStatus.PENDING)?.planNameSnapshot}</p>
+                  <p className="text-yellow-400 text-sm sm:text-base">{t('pendingApproval')} {currentUser.activeSubscriptionPlanId && `- ${currentPlanDetails?.name || t('planLoading')}`}</p>
                 ) : (
                 <div className="text-center">
                     <p className="text-slate-400 text-sm sm:text-base mb-3 sm:mb-4">{t('noActivePlan')}</p>
@@ -113,6 +146,41 @@ const DashboardPage: React.FC = () => {
                     <p className="text-slate-400 text-sm sm:text-base">{t('noPdfsAssigned')}</p>
                 )}
             </Card>
+
+            <Card className="p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-rose-400 mb-3 sm:mb-4">{t('myLearningResources')}</h2>
+                {assignedResourceLinks.length > 0 ? (
+                    <div className="space-y-2 sm:space-y-3 max-h-52 sm:max-h-60 overflow-y-auto">
+                    {assignedResourceLinks.map(link => (
+                        <div key={link.id} className="p-2 sm:p-3 bg-slate-700 rounded-md">
+                            <div className="flex flex-col xs:flex-row xs:justify-between xs:items-start gap-2">
+                                <div>
+                                    <h4 className="font-semibold text-white text-sm sm:text-base break-all">{link.title}</h4>
+                                    <p className="text-xs text-slate-400 mb-1">{link.description}</p>
+                                    <span className={`px-1.5 py-0.5 text-xs bg-${THEME_COLORS.accent} bg-opacity-20 text-${THEME_COLORS.accent} rounded-full`}>
+                                        {getResourceCategoryName(link.category)}
+                                    </span>
+                                </div>
+                                <Button 
+                                    onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')} 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="!text-xs !px-2 !py-1 self-start xs:self-center mt-1 xs:mt-0 flex-shrink-0"
+                                >
+                                    {t('openLink')}
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 sm:w-4 sm:h-4 ms-1 sm:ms-2">
+                                      <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 000 1.5h5.5a.75.75 0 000-1.5h-5.5zm0 3a.75.75 0 000 1.5h3.5a.75.75 0 000-1.5h-3.5zm0 3a.75.75 0 000 1.5h5.5a.75.75 0 000-1.5h-5.5z" clipRule="evenodd" />
+                                      <path d="M11.5 4.5a1.5 1.5 0 00-1.5 1.5v.256a.75.75 0 001.5 0V6a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.006a.75.75 0 001.5-.001V6A2.25 2.25 0 0012.25 3.75h-.01A2.25 2.25 0 0010 6.006V10a2.25 2.25 0 002.25 2.25h.01A2.25 2.25 0 0014.5 10v-.256a.75.75 0 00-1.5 0V10a.75.75 0 01-.75.75h-.01A.75.75 0 0111.5 10V4.5z" />
+                                    </svg>
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                    </div>
+                ) : (
+                    <p className="text-slate-400 text-sm sm:text-base">{t('noResourcesAssigned')}</p>
+                )}
+            </Card>
         </div>
       </div>
     </div>
@@ -125,7 +193,7 @@ const StatsTracker: React.FC = () => {
   const { t } = useLocalization();
   const [stats, setStats] = useState<UserStats>(currentUser?.stats || {});
   const [newNote, setNewNote] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); 
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
@@ -149,13 +217,18 @@ const StatsTracker: React.FC = () => {
   
   const handleSaveStats = async () => {
     if (!currentUser) return;
-    setIsLoading(true);
-    const updatedUser = await DataService.updateUserStats(currentUser.id, stats);
-    if (updatedUser) {
-      setCurrentUser(updatedUser); 
-      setIsEditing(false);
+    setIsSaving(true);
+    try {
+      const updatedUser = await DataService.updateUserStats(currentUser.id, stats);
+      if (updatedUser) {
+        setCurrentUser(updatedUser); 
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error("Error saving stats:", error);
+      // Optionally show an error message to the user
     }
-    setIsLoading(false);
+    setIsSaving(false);
   };
 
   if (!currentUser) return null;
@@ -180,7 +253,7 @@ const StatsTracker: React.FC = () => {
             <Button onClick={handleAddNote} variant="secondary" size="sm">{t('addNote')}</Button>
           </div>
           <div className="flex gap-2 mt-3 sm:mt-4">
-            <Button onClick={handleSaveStats} isLoading={isLoading} size="md">{t('saveChanges')}</Button>
+            <Button onClick={handleSaveStats} isLoading={isSaving} size="md">{t('saveChanges')}</Button>
             <Button onClick={() => { setIsEditing(false); setStats(currentUser?.stats || {}); }} variant="ghost" size="md">{t('cancel')}</Button>
           </div>
         </>
@@ -219,6 +292,15 @@ const ProfilePage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => { 
+    if (currentUser) {
+        setName(currentUser.name || '');
+        setEmail(currentUser.email || '');
+        setPhoneNumber(currentUser.phoneNumber || '');
+        setCountry(currentUser.country || '');
+    }
+  }, [currentUser]);
+
   if (!currentUser) return <Spinner />;
 
   const handleSubmit = async (e: FormEvent) => {
@@ -239,16 +321,16 @@ const ProfilePage: React.FC = () => {
     }
     
     const updatedUserDetails = { 
-        ...currentUser, 
+        id: currentUser.id, 
         name, 
         email, 
         phoneNumber,
         country
     };
     try {
-        const updatedUser = DataService.updateUser(updatedUserDetails, undefined); 
+        const updatedUser = await DataService.updateUser(updatedUserDetails); 
         if (updatedUser) {
-          setCurrentUser(updatedUser);
+          setCurrentUser(updatedUser); 
           setMessage(t('profileUpdatedSuccess', 'تم تحديث الملف الشخصي بنجاح!'));
         } else {
           setError(t('errorOccurred'));
@@ -277,7 +359,7 @@ const ProfilePage: React.FC = () => {
                 value={country} 
                 onChange={e => setCountry(e.target.value)} 
                 required
-                className={`block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-white`}
+                className={`block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-xs sm:text-sm text-${THEME_COLORS.textPrimary}`}
             >
                 {COUNTRIES_LIST.map(c => (
                     <option key={c.code} value={c.code} disabled={c.code === ''}>{c.name}</option>
@@ -300,46 +382,62 @@ const SubscriptionPlansPage: React.FC = () => {
   const { t } = useLocalization();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState<string | null>(null); 
+  const [isLoadingPlan, setIsLoadingPlan] = useState<string | null>(null); 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [pageMessage, setPageMessage] = useState(location.state?.message);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loadingPage, setLoadingPage] = useState(true);
 
   useEffect(() => {
-    setPlans(DataService.getSubscriptionPlans());
-    refreshUser();
-    if (location.state?.message) {
-      navigate(location.pathname, { replace: true, state: {} }); 
-    }
-  }, [location.pathname, location.state, navigate, refreshUser]);
+    const fetchPlansAndUser = async () => {
+      setLoadingPage(true);
+      try {
+        const fetchedPlans = await DataService.getSubscriptionPlans();
+        setPlans(fetchedPlans);
+        if (currentUser) { 
+          await refreshUser();
+        }
+      } catch (err) {
+        console.error("Error fetching plans:", err);
+        setError(t('errorOccurred'));
+      }
+      if (location.state?.message) {
+        setPageMessage(location.state.message);
+        navigate(location.pathname, { replace: true, state: {} }); 
+      }
+      setLoadingPage(false);
+    };
+    fetchPlansAndUser();
+  }, [location.pathname, location.state, navigate, refreshUser, currentUser]); 
 
   const handleSubscribe = async (planId: string) => {
     if (!currentUser) return;
-    setIsLoading(planId);
+    setIsLoadingPlan(planId);
     setError('');
     setSuccess('');
     try {
-      DataService.requestSubscription(currentUser.id, currentUser.email, planId);
-      const updatedUser = DataService.getUserById(currentUser.id); 
+      await DataService.requestSubscription(currentUser.id, currentUser.email, planId);
+      const updatedUser = await DataService.getUserById(currentUser.id); 
       if(updatedUser) setCurrentUser(updatedUser); 
       setSuccess(t('subscriptionRequestedSuccess', 'تم إرسال طلب اشتراكك بنجاح. ستتم مراجعته قريبًا.'));
     } catch (err: any) {
       setError(err.message || t('errorOccurred'));
     }
-    setIsLoading(null);
+    setIsLoadingPlan(null);
     setTimeout(() => {setError(''); setSuccess('');}, 4000);
   };
 
+  if (loadingPage) return <LoadingOverlay message={t('loading')} />;
 
   return (
     <div className="space-y-6 sm:space-y-8">
       <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white text-center">{t('subscriptions')}</h1>
       {pageMessage && <div className={`p-3 sm:p-4 mb-4 text-xs sm:text-sm rounded-lg bg-opacity-20 bg-red-500 text-red-300`}>{pageMessage}</div>}
-      {error && <p className="text-xs sm:text-sm text-red-400 text-center bg-red-900 p-2 sm:p-3 rounded-md">{error}</p>}
-      {success && <p className="text-xs sm:text-sm text-green-400 text-center bg-green-900 p-2 sm:p-3 rounded-md">{success}</p>}
+      {error && <p className="text-xs sm:text-sm text-red-400 text-center bg-red-900 bg-opacity-30 p-2 sm:p-3 rounded-md">{error}</p>}
+      {success && <p className="text-xs sm:text-sm text-green-400 text-center bg-green-900 bg-opacity-30 p-2 sm:p-3 rounded-md">{success}</p>}
       
-      {plans.length === 0 && <p className="text-center text-slate-400 py-6 sm:py-8">{t('noPlansAvailable', 'لا توجد خطط اشتراك متاحة حاليًا.')}</p>}
+      {plans.length === 0 && !loadingPage && <p className="text-center text-slate-400 py-6 sm:py-8">{t('noPlansAvailable', 'لا توجد خطط اشتراك متاحة حاليًا.')}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {plans.map(plan => (
           <Card key={plan.id} className="p-4 sm:p-6 flex flex-col justify-between">
@@ -363,7 +461,7 @@ const SubscriptionPlansPage: React.FC = () => {
             ) : (
                <Button 
                 onClick={() => handleSubscribe(plan.id)} 
-                isLoading={isLoading === plan.id}
+                isLoading={isLoadingPlan === plan.id}
                 disabled={!!currentUser?.subscriptionStatus && currentUser?.subscriptionStatus !== SubscriptionStatus.EXPIRED && currentUser?.subscriptionStatus !== SubscriptionStatus.CANCELLED && currentUser?.subscriptionStatus !== SubscriptionStatus.REJECTED}
                 className="w-full mt-auto text-sm sm:text-base"
                 size="md"

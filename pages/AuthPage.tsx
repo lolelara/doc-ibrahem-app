@@ -60,13 +60,20 @@ const LoginForm: React.FC = () => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    const user = DataService.getUserByEmail(email);
-    
-    if (user && (user.password === password || (user.email === ADMIN_EMAIL && password === 'adminpassword'))) { 
-      const checkedUser = DataService.checkUserSubscriptionStatus(user.id);
-      setCurrentUser(checkedUser || user);
-      navigate(user.role === UserRole.ADMIN || user.role === UserRole.SITE_MANAGER ? '/admin' : from, { replace: true });
-    } else {
+    try {
+      const user = await DataService.getUserByEmail(email);
+      
+      // Password check should ideally be done by the backend.
+      // This is a simplified frontend check for demonstration.
+      if (user && (user.password === password || (user.email === ADMIN_EMAIL && password === 'adminpassword'))) { 
+        const checkedUser = await DataService.checkUserSubscriptionStatus(user.id) || user;
+        setCurrentUser(checkedUser);
+        navigate(checkedUser.role === UserRole.ADMIN || checkedUser.role === UserRole.SITE_MANAGER ? '/admin' : from, { replace: true });
+      } else {
+        setError(t('loginFailed'));
+      }
+    } catch (err) {
+      console.error("Login error:", err);
       setError(t('loginFailed'));
     }
     setIsLoading(false);
@@ -93,7 +100,6 @@ const RegisterForm: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLocalization();
-  const { setCurrentUser } = useAuth(); 
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -117,24 +123,25 @@ const RegisterForm: React.FC = () => {
       setIsLoading(false);
       return;
     }
-
-    if (DataService.getUserByEmail(email)) {
-      setError(t('emailInUseError', 'هذا البريد الإلكتروني مستخدم بالفعل.'));
-      setIsLoading(false);
-      return;
-    }
-
-    const newUserBase: Omit<User, 'id' | 'role'> = {
-      email,
-      password, 
-      name,
-      phoneNumber,
-      country,
-      subscriptionStatus: undefined,
-    };
     
     try {
-      const registeredUser = DataService.addUser(newUserBase); 
+      const existingUser = await DataService.getUserByEmail(email);
+      if (existingUser) {
+        setError(t('emailInUseError', 'هذا البريد الإلكتروني مستخدم بالفعل.'));
+        setIsLoading(false);
+        return;
+      }
+
+      const newUserBase: Omit<User, 'id' | 'role'> = {
+        email,
+        password, 
+        name,
+        phoneNumber,
+        country,
+        subscriptionStatus: undefined, // Will be set by backend or subscription flow
+      };
+    
+      await DataService.addUser(newUserBase); 
       setSuccess(t('registrationSuccessful'));
       setName(''); setEmail(''); setPassword(''); setConfirmPassword(''); setPhoneNumber(''); setCountry(COUNTRIES_LIST[0]?.code || '');
     } catch (err: any) {
@@ -180,18 +187,25 @@ const FeaturedTransformationsSection: React.FC = () => {
     const { t } = useLocalization();
     const [topPosts, setTopPosts] = useState<TransformationPost[]>([]);
     const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
 
     useEffect(() => {
-        setLoading(true);
-        const allPosts = DataService.getTransformationPosts();
-        const postsWithScores = allPosts.map(post => ({
-            ...post,
-            interactionScore: (post.likes?.length || 0) + (post.commentsCount || 0)
-        }));
-        postsWithScores.sort((a, b) => b.interactionScore - a.interactionScore);
-        setTopPosts(postsWithScores.slice(0, 10));
-        setLoading(false);
+        const fetchTopPosts = async () => {
+            setLoading(true);
+            try {
+                const allPosts = await DataService.getTransformationPosts();
+                const postsWithScores = allPosts.map(post => ({
+                    ...post,
+                    interactionScore: (post.likes?.length || 0) + (post.commentsCount || 0)
+                }));
+                postsWithScores.sort((a, b) => b.interactionScore - a.interactionScore);
+                setTopPosts(postsWithScores.slice(0, 10));
+            } catch (error) {
+                console.error("Error fetching top posts:", error);
+                setTopPosts([]);
+            }
+            setLoading(false);
+        };
+        fetchTopPosts();
     }, []);
 
     if (loading) {
@@ -213,10 +227,7 @@ const FeaturedTransformationsSection: React.FC = () => {
     }
     
     const handleViewPost = (postId: string) => {
-        // For now, clicking a featured post might not navigate if user is not logged in.
-        // Future: navigate to a public view or the main transformations page if it becomes public.
-        // For now, do nothing or simply log.
-        console.log("View post:", postId); 
+        console.log("View post (public view not implemented):", postId); 
     };
 
     return (

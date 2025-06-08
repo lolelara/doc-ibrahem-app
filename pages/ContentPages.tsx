@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
 import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useLocalization } from '../App';
@@ -29,8 +28,18 @@ const WorkoutsPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setVideos(DataService.getWorkoutVideos());
-    setLoading(false);
+    const fetchVideos = async () => {
+      setLoading(true);
+      try {
+        const fetchedVideos = await DataService.getWorkoutVideos();
+        setVideos(fetchedVideos);
+      } catch (error) {
+        console.error("Error fetching workout videos:", error);
+        setVideos([]); // Set to empty on error
+      }
+      setLoading(false);
+    };
+    fetchVideos();
   }, []);
 
   const filteredVideos = videos.filter(video => 
@@ -38,7 +47,7 @@ const WorkoutsPage: React.FC = () => {
     video.description.toLowerCase().includes(searchTerm.toLowerCase())
   ).filter(video => categoryFilter ? video.category === categoryFilter : true);
 
-  const categories = [...new Set(videos.map(v => v.category))];
+  const categories = [...new Set(videos.map(v => v.category))]; // Recalculate if videos change
 
   if (loading) return <LoadingOverlay message={t('loadingWorkoutVideos', 'جاري تحميل التمارين...')} />;
 
@@ -75,7 +84,6 @@ const WorkoutsPage: React.FC = () => {
   );
 };
 
-// Workout Video Card (Local Component)
 interface WorkoutVideoCardProps {
   video: WorkoutVideo;
   onClick: () => void;
@@ -83,7 +91,7 @@ interface WorkoutVideoCardProps {
 const WorkoutVideoCard: React.FC<WorkoutVideoCardProps> = ({ video, onClick }) => {
   const { t } = useLocalization();
   return (
-    <Card className="flex flex-col p-0" onClick={onClick}> {/* Remove Card padding, apply to inner div */}
+    <Card className="flex flex-col p-0" onClick={onClick}>
       <img src={video.thumbnailUrl || `https://picsum.photos/seed/${video.id}/400/225`} alt={video.title} className="w-full h-40 sm:h-48 object-cover rounded-t-xl"/>
       <div className="p-3 sm:p-4 flex flex-col flex-grow">
         <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary} mb-1 sm:mb-2`}>{video.title}</h3>
@@ -104,11 +112,22 @@ const VideoDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (videoId) {
-            const foundVideo = DataService.getWorkoutVideos().find(v => v.id === videoId);
-            setVideo(foundVideo || null);
-        }
-        setLoading(false);
+        const fetchVideo = async () => {
+            setLoading(true);
+            if (videoId) {
+                try {
+                    // Assuming getWorkoutVideos still fetches all; in a real API, fetch by ID
+                    const allVideos = await DataService.getWorkoutVideos();
+                    const foundVideo = allVideos.find(v => v.id === videoId);
+                    setVideo(foundVideo || null);
+                } catch (error) {
+                    console.error(`Error fetching video ${videoId}:`, error);
+                    setVideo(null);
+                }
+            }
+            setLoading(false);
+        };
+        fetchVideo();
     }, [videoId]);
 
     if (loading) return <LoadingOverlay message={t('loadingVideo', 'جاري تحميل الفيديو...')} />;
@@ -147,10 +166,19 @@ const NutritionPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
-
   useEffect(() => {
-    setRecipes(DataService.getRecipes());
-    setLoadingRecipes(false);
+    const fetchRecipes = async () => {
+      setLoadingRecipes(true);
+      try {
+        const fetchedRecipes = await DataService.getRecipes();
+        setRecipes(fetchedRecipes);
+      } catch (error) {
+        console.error("Error fetching recipes:", error);
+        setRecipes([]);
+      }
+      setLoadingRecipes(false);
+    };
+    fetchRecipes();
   }, []);
 
   const filteredRecipes = recipes.filter(recipe => 
@@ -183,7 +211,7 @@ const NutritionPage: React.FC = () => {
             {categories.map(cat => <option key={cat} value={cat}>{t(cat.toLowerCase(), cat)}</option>)}
             </select>
         </div>
-        {loadingRecipes ? <Spinner /> : filteredRecipes.length > 0 ? (
+        {loadingRecipes ? <Spinner className="mx-auto"/> : filteredRecipes.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredRecipes.map(recipe => (
               <RecipeCard key={recipe.id} recipe={recipe} onSelectRecipe={setSelectedRecipe} />
@@ -213,7 +241,6 @@ const NutritionPage: React.FC = () => {
   );
 };
 
-// Recipe Card (Local Component)
 interface RecipeCardProps {
   recipe: Recipe;
   onSelectRecipe: (recipe: Recipe) => void;
@@ -221,7 +248,7 @@ interface RecipeCardProps {
 const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSelectRecipe }) => {
   const { t } = useLocalization();
   return (
-    <Card className="flex flex-col p-0" onClick={() => onSelectRecipe(recipe)}> {/* Remove Card padding, apply to inner div */}
+    <Card className="flex flex-col p-0" onClick={() => onSelectRecipe(recipe)}>
       <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.id}/400/300`} alt={recipe.name} className="w-full h-40 sm:h-56 object-cover rounded-t-xl"/>
       <div className="p-3 sm:p-4 flex flex-col flex-grow">
         <h3 className={`text-md sm:text-lg font-semibold text-${THEME_COLORS.primary} mb-1 sm:mb-2`}>{recipe.name}</h3>
@@ -268,10 +295,10 @@ const RecipeDetail: React.FC<{recipe: Recipe}> = ({recipe}) => {
     );
 };
 
-
-// Calorie Tracker
 const CalorieTracker: React.FC = () => {
   const { t } = useLocalization();
+  // This component's state remains local as it doesn't persist data beyond the session.
+  // If it needed to persist, items would be fetched/saved via DataService.
   const [items, setItems] = useState<CalorieIntakeItem[]>([]);
   const [foodItem, setFoodItem] = useState('');
   const [calories, setCalories] = useState<number | ''>('');
@@ -340,7 +367,6 @@ const CalorieTracker: React.FC = () => {
   );
 };
 
-// Nutrition AI Assistant
 const NutritionAIAssistant: React.FC = () => {
   const { t } = useLocalization();
   const [messages, setMessages] = useState<AIAssistantMessage[]>([]);
@@ -419,7 +445,7 @@ const NutritionAIAssistant: React.FC = () => {
 };
 
 
-const LoadingOverlay: React.FC<{ message?: string }> = ({ message }) => {
+const LoadingOverlay: React.FC<{ message?: string }> = ({ message }) => { // Kept local as it's a generic UI util
   const { t } = useLocalization();
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 bg-opacity-80">

@@ -161,3 +161,22 @@ export interface TransformationComment {
   text: string;
   createdAt: string; // ISO date string
 }
+
+// External Resource Link
+export enum ExternalResourceCategory {
+  WORKOUT_PLAN = 'workout_plan',
+  NUTRITION_GUIDE = 'nutrition_guide',
+  INFORMATIONAL_ARTICLE = 'informational_article',
+  OTHER = 'other',
+}
+
+export interface ExternalResourceLink {
+  id: string;
+  title: string;
+  url: string; 
+  description?: string;
+  category: ExternalResourceCategory;
+  addedBy: string; // Admin/SiteManager ID
+  addedDate: string; // ISO Date string
+  assignedUserIds: string[]; // Users this link is for
+}

@@ -12,7 +12,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', size = 'md', isLoading = false, className = '', ...props }) => {
-  const baseStyle = 'font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 ease-in-out transform hover:scale-105 focus:scale-105 active:scale-95 flex items-center justify-center shadow-md hover:shadow-lg';
+  const baseStyle = 'font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 ease-in-out transform hover:scale-105 focus:scale-105 active:scale-95 flex items-center justify-center shadow-sm hover:shadow-md focus:shadow-md'; // Updated shadow
   
   let variantStyle = '';
   switch (variant) {
@@ -60,7 +60,7 @@ export const Input: React.FC<InputProps> = ({ label, id, error, className = '', 
       {label && <label htmlFor={id} className={`block text-xs sm:text-sm font-medium text-${THEME_COLORS.textSecondary} mb-1 sm:mb-1.5`}>{label}</label>}
       <input
         id={id}
-        className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-700 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-600`} rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-slate-100 transition-colors duration-150 ${className}`}
+        className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-700 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-600`} rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-${THEME_COLORS.textPrimary} transition-colors duration-150 ${className}`} // Updated text color
         {...props}
       />
       {error && <p className="mt-1 sm:mt-1.5 text-xs text-red-400">{error}</p>}
@@ -79,7 +79,7 @@ export const Textarea: React.FC<TextareaProps> = ({ label, id, error, className 
       <textarea
         id={id}
         rows={props.rows || 3} // Default to 3 rows if not specified
-        className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-700 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-600`} rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-slate-100 transition-colors duration-150 ${className}`}
+        className={`block w-full px-3 py-2 text-sm sm:text-base sm:px-4 sm:py-2 bg-slate-700 border ${error ? `border-${THEME_COLORS.error}` : `border-slate-600`} rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-${THEME_COLORS.primary} focus:border-${THEME_COLORS.primary} text-${THEME_COLORS.textPrimary} transition-colors duration-150 ${className}`} // Updated text color
         {...props}
       />
       {error && <p className="mt-1 sm:mt-1.5 text-xs text-red-400">{error}</p>}
