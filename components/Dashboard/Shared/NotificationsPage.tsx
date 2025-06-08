@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { ARABIC_STRINGS } from '../../../constants';
+import { Link as RouterLink } from 'react-router-dom'; // Import Link from react-router-dom
 
 const NotificationsPage: React.FC = () => {
   const { user, userNotifications, fetchNotifications, markNotificationAsRead, actionLoading } = useAuth();
@@ -54,9 +55,9 @@ const NotificationsPage: React.FC = () => {
                 )}
               </div>
               {notif.link && (
-                <Link to={notif.link} className="text-sm text-blue-400 hover:underline mt-2 inline-block">
+                <RouterLink to={notif.link} className="text-sm text-blue-400 hover:underline mt-2 inline-block">
                   <i className="fas fa-link me-1"></i> اذهب إلى الرابط
-                </Link>
+                </RouterLink>
               )}
             </li>
           ))}
@@ -65,9 +66,5 @@ const NotificationsPage: React.FC = () => {
     </div>
   );
 };
-
-// Helper to use React Router Link for internal links (as used previously, consider react-router-dom Link if full SPA page change needed)
-const Link: React.FC<{to:string, className?:string, children: React.ReactNode}> = ({to, className, children}) => <a href={`#${to.startsWith('/') ? '' : '/'}${to}`} className={className}>{children}</a>;
-
 
 export default NotificationsPage;
